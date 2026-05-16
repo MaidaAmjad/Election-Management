@@ -52,8 +52,8 @@ VITE_SUPABASE_ANON_KEY=your-anon-key
 In the [Supabase Dashboard](https://supabase.com/dashboard):
 
 1. Enable **Email** auth provider.
-2. Configure **Site URL** and **Redirect URLs** (include `http://localhost:5173` for local dev).
-3. Customize email templates for confirmation and password reset.
+2. Turn **off** **Confirm email** under Authentication → Providers → Email (password-only auth during development).
+3. Configure **Site URL** and **Redirect URLs** (include `http://localhost:5173` for local dev).
 
 ### 3. Run the development server
 

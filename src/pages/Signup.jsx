@@ -6,14 +6,17 @@ import AuthCard from '../components/auth/AuthCard';
 import SelectedRoleBanner from '../components/auth/SelectedRoleBanner';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
+import PasswordInput from '../components/ui/PasswordInput';
+import Textarea from '../components/ui/Textarea';
 import { useAuth } from '../hooks/useAuth';
-import { ROUTES } from '../utils/constants';
+import { ROUTES, USER_ROLES } from '../utils/constants';
 import { validateSignupForm } from '../utils/signupValidation';
+import { validateCreatorRequestFields } from '../utils/creatorRequestValidation';
+import { createCreatorRequest } from '../services/creatorRequestService';
+import { getPostAuthDestination } from '../utils/postAuthNavigation';
 import { normalizePhone } from '../utils/validators';
-import {
-  getSelectedRole,
-  isSignupAllowedForRole,
-} from '../utils/roleStorage';
+import { getSelectedRole } from '../utils/roleStorage';
+import { normalizeRole } from '../utils/roleHelpers';
 
 const initialForm = {
   fullName: '',
@@ -21,12 +24,16 @@ const initialForm = {
   phone: '',
   password: '',
   confirmPassword: '',
+  organization: '',
+  purpose: '',
 };
 
 export default function Signup() {
   const navigate = useNavigate();
-  const { signup, logout } = useAuth();
+  const { signup, sendMfaOtp } = useAuth();
   const selectedRole = getSelectedRole();
+  const isCreatorSignup =
+    normalizeRole(selectedRole) === USER_ROLES.ELECTION_CREATOR;
 
   const [form, setForm] = useState(initialForm);
   const [errors, setErrors] = useState({});
@@ -36,15 +43,10 @@ export default function Signup() {
   useEffect(() => {
     if (!selectedRole) {
       navigate(ROUTES.CHOOSE_ROLE, { replace: true });
-      return;
-    }
-    if (!isSignupAllowedForRole(selectedRole)) {
-      navigate(ROUTES.CHOOSE_ROLE, { replace: true });
-      toast.error('Admin accounts are created by the system.');
     }
   }, [selectedRole, navigate]);
 
-  if (!selectedRole || !isSignupAllowedForRole(selectedRole)) {
+  if (!selectedRole) {
     return null;
   }
 
@@ -63,7 +65,10 @@ export default function Signup() {
   }
 
   function validate() {
-    const nextErrors = validateSignupForm(form);
+    const nextErrors = {
+      ...validateSignupForm(form),
+      ...(isCreatorSignup ? validateCreatorRequestFields(form) : {}),
+    };
     setErrors(nextErrors);
     return Object.keys(nextErrors).length === 0;
   }
@@ -77,13 +82,13 @@ export default function Signup() {
     setIsSubmitting(true);
 
     try {
-      const { user } = await signup({
-        email: form.email,
-        password: form.password,
-        fullName: form.fullName,
-        phone: normalizePhone(form.phone),
-        role: selectedRole,
-      });
+      const { user, profile, requiresMfa } = await signup({
+          email: form.email,
+          password: form.password,
+          fullName: form.fullName,
+          phone: normalizePhone(form.phone),
+          role: selectedRole,
+        });
 
       if (user?.identities?.length === 0) {
         setErrors({ email: 'An account with this email already exists.' });
@@ -91,14 +96,52 @@ export default function Signup() {
         return;
       }
 
-      await logout();
+      if (!profile?.role) {
+        setFormError(
+          'Your profile could not be loaded. Please sign in or contact support.',
+        );
+        return;
+      }
 
-      toast.success('Account created! Check your email to verify your account.');
+      const actualRole = normalizeRole(profile.role);
+      if (actualRole !== selectedRole) {
+        setFormError('Account role mismatch. Please contact support.');
+        return;
+      }
 
-      navigate(ROUTES.VERIFY_EMAIL, {
-        replace: true,
-        state: { email: form.email.trim() },
-      });
+      if (isCreatorSignup) {
+        await createCreatorRequest({
+          userId: user.id,
+          purpose: form.purpose,
+          email: form.email,
+          phone: normalizePhone(form.phone),
+          organization: form.organization,
+        });
+        toast.success(
+          'Account created! Your election creator request is pending admin approval.',
+        );
+      }
+
+      const destination = await getPostAuthDestination(actualRole, user?.id);
+
+      if (requiresMfa) {
+        await sendMfaOtp(form.email);
+        toast.success('Verification code sent to your email.');
+        navigate(ROUTES.VERIFY_MFA, {
+          replace: true,
+          state: {
+            from: { pathname: destination },
+            otpSent: true,
+          },
+        });
+        return;
+      }
+
+      if (!isCreatorSignup) {
+        toast.success('Account created! Welcome.');
+      }
+
+      navigate(destination, { replace: true });
     } catch (error) {
       const message = error.message ?? 'Failed to create account. Please try again.';
       setFormError(message);
@@ -114,7 +157,7 @@ export default function Signup() {
       title="Create account"
       subtitle="Register for secure online elections"
       footer={
-        <p className="text-slate-600">
+        <p className="text-center text-slate-600">
           Already have an account?{' '}
           <Link
             to={ROUTES.LOGIN}
@@ -127,14 +170,14 @@ export default function Signup() {
     >
       <div className="mb-5 space-y-4">
         <Link
-          to={ROUTES.CHOOSE_ROLE}
+          to={ROUTES.LOGIN}
           className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-primary-700"
         >
           <HiOutlineArrowLeft className="h-4 w-4" aria-hidden="true" />
-          Back
+          Back to sign in
         </Link>
         <SelectedRoleBanner role={selectedRole} mode="signup" />
-      </div>
+        </div>
 
       <form onSubmit={handleSubmit} className="space-y-5" noValidate>
         {formError && (
@@ -186,9 +229,33 @@ export default function Signup() {
           disabled={isSubmitting}
         />
 
-        <Input
+        {isCreatorSignup && (
+          <>
+            <Input
+              id="organization"
+              type="text"
+              label="Organization name"
+              value={form.organization}
+              onChange={updateField('organization')}
+              error={errors.organization}
+              placeholder="Your school, club, or organization"
+              disabled={isSubmitting}
+            />
+            <Textarea
+              id="purpose"
+              label="Purpose of election"
+              value={form.purpose}
+              onChange={updateField('purpose')}
+              error={errors.purpose}
+              rows={4}
+              placeholder="Describe the elections you plan to run and why you need creator access"
+              disabled={isSubmitting}
+            />
+          </>
+        )}
+
+        <PasswordInput
           id="password"
-          type="password"
           label="Password"
           autoComplete="new-password"
           value={form.password}
@@ -198,9 +265,8 @@ export default function Signup() {
           disabled={isSubmitting}
         />
 
-        <Input
+        <PasswordInput
           id="confirmPassword"
-          type="password"
           label="Confirm password"
           autoComplete="new-password"
           value={form.confirmPassword}
@@ -211,8 +277,9 @@ export default function Signup() {
         />
 
         <p className="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-500">
-          Role is set from your selection and cannot be changed here. A
-          verification email will be sent after sign up.
+          {isCreatorSignup
+            ? 'Election Creator access requires Super Admin approval after sign-up. You will be notified by email when your request is reviewed.'
+            : 'Role is set from your selection. Sign in immediately after creating your account with email and password.'}
         </p>
 
         <Button

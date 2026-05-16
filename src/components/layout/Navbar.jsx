@@ -54,7 +54,7 @@ export default function Navbar() {
             </>
           ) : (
             <>
-              <NavLink to={ROUTES.LOGIN} className={navLinkClass}>
+              <NavLink to={ROUTES.CHOOSE_ROLE} className={navLinkClass}>
                 Sign in
               </NavLink>
               <Link to={ROUTES.CHOOSE_ROLE}>

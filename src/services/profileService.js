@@ -78,6 +78,32 @@ export async function createProfile({ id, fullName, phone, role }) {
   return mapProfileRow(data);
 }
 
+export async function updateProfileRole(userId, role) {
+  const normalizedRole = normalizeRole(role) ?? USER_ROLES.VOTER;
+
+  const { data, error } = await supabase
+    .from('profiles')
+    .update({ role: normalizedRole })
+    .eq('id', userId)
+    .select(`${PROFILE_BASE_COLUMNS}, mfa_email_enabled`)
+    .single();
+
+  if (error?.code === '42703' || error?.message?.includes('mfa_email_enabled')) {
+    const { data: fallbackData, error: fallbackError } = await supabase
+      .from('profiles')
+      .update({ role: normalizedRole })
+      .eq('id', userId)
+      .select(PROFILE_BASE_COLUMNS)
+      .single();
+
+    if (fallbackError) throw fallbackError;
+    return mapProfileRow(fallbackData);
+  }
+
+  if (error) throw error;
+  return mapProfileRow(data);
+}
+
 export async function updateMfaEmailEnabled(userId, enabled) {
   const { data, error } = await supabase
     .from('profiles')

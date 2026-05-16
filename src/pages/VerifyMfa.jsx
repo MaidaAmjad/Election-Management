@@ -8,6 +8,10 @@ import Input from '../components/ui/Input';
 import RouteLoader from '../components/routing/RouteLoader';
 import { useAuth } from '../hooks/useAuth';
 import { ROUTES } from '../utils/constants';
+import {
+  formatCooldownSeconds,
+  getOtpCooldownRemainingMs,
+} from '../utils/otpCooldown';
 import { getMfaErrorMessage, validateOtpCode } from '../utils/mfaValidation';
 import { getDashboardPathForRole } from '../utils/roleHelpers';
 
@@ -30,7 +34,8 @@ export default function VerifyMfa() {
   const [formError, setFormError] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
   const [isResending, setIsResending] = useState(false);
-  const [otpSent, setOtpSent] = useState(false);
+  const [otpSent, setOtpSent] = useState(Boolean(location.state?.otpSent));
+  const [resendCooldownSec, setResendCooldownSec] = useState(0);
 
   const email = user?.email ?? '';
   const redirectPath =
@@ -59,6 +64,12 @@ export default function VerifyMfa() {
   useEffect(() => {
     if (!email || otpSent || loading || profileLoading || !requiresMfa) return;
 
+    // Login already sent the code — avoid a second email (hits Supabase rate limits).
+    if (location.state?.otpSent) {
+      setOtpSent(true);
+      return;
+    }
+
     async function sendInitialOtp() {
       try {
         await sendMfaOtp(email);
@@ -70,9 +81,32 @@ export default function VerifyMfa() {
     }
 
     sendInitialOtp();
-  }, [email, otpSent, loading, profileLoading, requiresMfa, sendMfaOtp]);
+  }, [
+    email,
+    otpSent,
+    loading,
+    profileLoading,
+    requiresMfa,
+    sendMfaOtp,
+    location.state?.otpSent,
+  ]);
+
+  useEffect(() => {
+    if (!email) return undefined;
+
+    function tick() {
+      const remaining = getOtpCooldownRemainingMs(email);
+      setResendCooldownSec(formatCooldownSeconds(remaining));
+    }
+
+    tick();
+    const interval = setInterval(tick, 1000);
+    return () => clearInterval(interval);
+  }, [email, isResending]);
 
   async function handleResend() {
+    if (resendCooldownSec > 0) return;
+
     setIsResending(true);
     setFormError('');
 
@@ -197,9 +231,11 @@ export default function VerifyMfa() {
           className="w-full"
           onClick={handleResend}
           isLoading={isResending}
-          disabled={isResending || isVerifying}
+          disabled={isResending || isVerifying || resendCooldownSec > 0}
         >
-          Resend code
+          {resendCooldownSec > 0
+            ? `Resend code (${resendCooldownSec}s)`
+            : 'Resend code'}
         </Button>
       </form>
     </AuthCard>

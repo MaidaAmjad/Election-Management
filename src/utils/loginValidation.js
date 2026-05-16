@@ -1,4 +1,8 @@
 import { isValidEmail } from './validators';
+import {
+  getEmailRateLimitMessage,
+  isEmailRateLimitError,
+} from './mfaValidation';
 
 export function validateLoginForm({ email, password }) {
   const errors = {};
@@ -20,11 +24,11 @@ export function getAuthErrorMessage(error) {
   const message = error?.message ?? '';
 
   if (message.includes('Invalid login credentials')) {
-    return 'Invalid email or password. Please try again.';
+    return 'Invalid email or password. Use Forgot password below to set a new password for this email.';
   }
 
-  if (message.includes('Email not confirmed')) {
-    return 'Please verify your email before signing in.';
+  if (isEmailRateLimitError(error)) {
+    return getEmailRateLimitMessage();
   }
 
   return message || 'Failed to sign in. Please try again.';

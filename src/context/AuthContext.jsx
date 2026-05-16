@@ -19,7 +19,10 @@ import {
   ensureProfileForUser,
   updateMfaEmailEnabled,
 } from '../services/profileService';
-import { resolveRole } from '../utils/roleHelpers';
+import { resolveRole, normalizeRole } from '../utils/roleHelpers';
+import { USER_ROLES } from '../utils/constants';
+import { logActivity } from '../services/activityLogService';
+import { ACTIVITY_ACTIONS } from '../utils/adminConstants';
 import {
   clearMfaVerified,
   isMfaVerified,
@@ -151,6 +154,21 @@ export function AuthProvider({ children }) {
 
       const userProfile = newUser ? await loadProfile(newUser) : null;
 
+      if (
+        userProfile &&
+        normalizeRole(userProfile.role) === USER_ROLES.SUPER_ADMIN
+      ) {
+        try {
+          await logActivity({
+            userId: newUser.id,
+            action: ACTIVITY_ACTIONS.ADMIN_LOGIN,
+            description: 'Super Admin signed in to the platform.',
+          });
+        } catch (logErr) {
+          console.error('[Auth] Admin login log failed:', logErr?.message);
+        }
+      }
+
       return {
         session: newSession,
         user: newUser,
@@ -161,9 +179,50 @@ export function AuthProvider({ children }) {
     [loadProfile],
   );
 
-  const signup = useCallback(async (credentials) => {
-    return signUpWithEmail(credentials);
-  }, []);
+  const signup = useCallback(
+    async (credentials) => {
+      const data = await signUpWithEmail(credentials);
+      let newSession = data.session;
+      let newUser = data.user;
+
+      if (!newSession && newUser && credentials.password) {
+        try {
+          const signedIn = await signInWithEmail(
+            credentials.email,
+            credentials.password,
+          );
+          newSession = signedIn.session;
+          newUser = signedIn.user;
+        } catch {
+          /* sign-up succeeded; sign-in may fail if auth settings block immediate login */
+        }
+      }
+
+      if (!newSession || !newUser) {
+        return {
+          session: null,
+          user: newUser ?? null,
+          profile: null,
+          requiresMfa: false,
+        };
+      }
+
+      setSession(newSession);
+      setUser(newUser);
+      clearMfaVerified(newUser.id);
+      setMfaVerifiedState(false);
+
+      const userProfile = await loadProfile(newUser);
+
+      return {
+        session: newSession,
+        user: newUser,
+        profile: userProfile,
+        requiresMfa: Boolean(userProfile?.mfa_email_enabled),
+      };
+    },
+    [loadProfile],
+  );
 
   const logout = useCallback(async () => {
     const userId = user?.id;

@@ -3,10 +3,10 @@ import {
   HiOutlineArrowRightOnRectangle,
   HiOutlineCog6Tooth,
 } from 'react-icons/hi2';
-import { ROUTES } from '../utils/constants';
+import { ROUTES, USER_ROLES } from '../utils/constants';
 import { useAuth } from '../hooks/useAuth';
 import { useLogout } from '../hooks/useLogout';
-import { getRoleLabel } from '../utils/roleHelpers';
+import { getRoleLabel, hasRole } from '../utils/roleHelpers';
 import Button from '../components/ui/Button';
 
 export default function DashboardLayout({ title }) {
@@ -48,6 +48,56 @@ export default function DashboardLayout({ title }) {
           </div>
         </div>
       </header>
+
+      {hasRole(role, [USER_ROLES.SUPER_ADMIN]) && (
+        <nav className="border-b border-slate-200 bg-white">
+          <div className="mx-auto flex max-w-7xl flex-wrap gap-1 px-4 sm:px-6 lg:px-8">
+            <Link
+              to={ROUTES.ADMIN_DASHBOARD}
+              className="border-b-2 border-transparent px-3 py-3 text-sm font-medium text-slate-600 hover:border-slate-300 hover:text-slate-900"
+            >
+              Overview
+            </Link>
+            <Link
+              to={ROUTES.ADMIN_REQUESTS}
+              className="border-b-2 border-transparent px-3 py-3 text-sm font-medium text-slate-600 hover:border-slate-300 hover:text-slate-900"
+            >
+              Creator requests
+            </Link>
+            <Link
+              to={ROUTES.ADMIN_APPROVED_ELECTIONS}
+              className="border-b-2 border-transparent px-3 py-3 text-sm font-medium text-slate-600 hover:border-slate-300 hover:text-slate-900"
+            >
+              Approved elections
+            </Link>
+            <Link
+              to={ROUTES.ADMIN_ACTIVITY_LOGS}
+              className="border-b-2 border-transparent px-3 py-3 text-sm font-medium text-slate-600 hover:border-slate-300 hover:text-slate-900"
+            >
+              Activity logs
+            </Link>
+          </div>
+        </nav>
+      )}
+
+      {hasRole(role, [USER_ROLES.ELECTION_CREATOR]) && (
+        <nav className="border-b border-slate-200 bg-white">
+          <div className="mx-auto flex max-w-7xl gap-1 px-4 sm:px-6 lg:px-8">
+            <Link
+              to={ROUTES.CREATOR_DASHBOARD}
+              className="border-b-2 border-transparent px-3 py-3 text-sm font-medium text-slate-600 hover:border-slate-300 hover:text-slate-900"
+            >
+              My elections
+            </Link>
+            <Link
+              to={`${ROUTES.CREATOR_DASHBOARD}/elections/new`}
+              className="border-b-2 border-transparent px-3 py-3 text-sm font-medium text-slate-600 hover:border-slate-300 hover:text-slate-900"
+            >
+              Create election
+            </Link>
+          </div>
+        </nav>
+      )}
 
       <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         <Outlet />

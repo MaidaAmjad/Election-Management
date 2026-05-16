@@ -6,14 +6,16 @@ import AuthCard from '../components/auth/AuthCard';
 import SelectedRoleBanner from '../components/auth/SelectedRoleBanner';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
+import PasswordInput from '../components/ui/PasswordInput';
 import { useAuth } from '../hooks/useAuth';
-import { ROUTES } from '../utils/constants';
+import { ROUTES, USER_ROLES } from '../utils/constants';
 import {
   getAuthErrorMessage,
   validateLoginForm,
 } from '../utils/loginValidation';
-import { getDashboardPathForRole, normalizeRole } from '../utils/roleHelpers';
-import { getSelectedRole } from '../utils/roleStorage';
+import { normalizeRole } from '../utils/roleHelpers';
+import { getPostAuthDestination } from '../utils/postAuthNavigation';
+import { getSelectedRole, isSignupAllowedForRole } from '../utils/roleStorage';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -35,6 +37,9 @@ export default function Login() {
   if (!selectedRole) {
     return null;
   }
+
+  const canCreateAccount = isSignupAllowedForRole(selectedRole);
+  const isSuperAdmin = selectedRole === USER_ROLES.SUPER_ADMIN;
 
   function clearFieldError(field) {
     setErrors((prev) => {
@@ -61,7 +66,7 @@ export default function Login() {
     setIsSubmitting(true);
 
     try {
-      const { profile } = await login(email, password);
+      const { profile, user } = await login(email, password);
 
       if (!profile?.role) {
         setAuthError(
@@ -77,20 +82,23 @@ export default function Login() {
         return;
       }
 
+      const destination = await getPostAuthDestination(actualRole, user?.id);
+
       if (profile.mfa_email_enabled) {
         await sendMfaOtp(email);
         toast.success('Verification code sent to your email.');
         navigate(ROUTES.VERIFY_MFA, {
           replace: true,
           state: {
-            from: { pathname: getDashboardPathForRole(actualRole) },
+            from: { pathname: destination },
+            otpSent: true,
           },
         });
         return;
       }
 
       toast.success('Welcome back!');
-      navigate(getDashboardPathForRole(actualRole), { replace: true });
+      navigate(destination, { replace: true });
     } catch (error) {
       const message = getAuthErrorMessage(error);
       setAuthError(message);
@@ -105,15 +113,32 @@ export default function Login() {
       title="Sign in"
       subtitle="Access your election management account"
       footer={
-        <p className="text-slate-600">
-          Need a different role?{' '}
-          <Link
-            to={ROUTES.CHOOSE_ROLE}
-            className="font-medium text-primary-600 hover:text-primary-700"
-          >
-            Choose role
-          </Link>
-        </p>
+        <div className="space-y-3 text-center text-sm">
+          {canCreateAccount ? (
+            <p className="text-slate-600">
+              Don&apos;t have an account?{' '}
+              <Link
+                to={ROUTES.SIGNUP}
+                className="font-medium text-primary-600 hover:text-primary-700"
+              >
+                Create account
+              </Link>
+            </p>
+          ) : isSuperAdmin ? (
+            <p className="text-slate-500">
+              Super Admin accounts are provisioned by the system. Contact your
+              administrator if you need access.
+            </p>
+          ) : null}
+          <p className="text-slate-500">
+            <Link
+              to={ROUTES.CHOOSE_ROLE}
+              className="font-medium text-slate-600 hover:text-primary-700"
+            >
+              Choose a different role
+            </Link>
+          </p>
+        </div>
       }
     >
       <div className="mb-5 space-y-4">
@@ -122,9 +147,30 @@ export default function Login() {
           className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-primary-700"
         >
           <HiOutlineArrowLeft className="h-4 w-4" aria-hidden="true" />
-          Back
+          Back to choose role
         </Link>
         <SelectedRoleBanner role={selectedRole} mode="login" />
+
+        {isSuperAdmin && (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            <p className="font-medium">First time signing in as Super Admin?</p>
+            <p className="mt-1 text-amber-800">
+              If these credentials do not work, use{' '}
+              <Link
+                to={ROUTES.FORGOT_PASSWORD}
+                className="font-semibold underline hover:text-amber-950"
+              >
+                Forgot password
+              </Link>{' '}
+              to set your password, then sign in again. In Supabase SQL Editor,
+              run{' '}
+              <code className="rounded bg-amber-100 px-1 text-xs">
+                006_super_admin_maidaamjad.sql
+              </code>{' '}
+              so your role is Super Admin.
+            </p>
+          </div>
+        )}
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-5" noValidate>
@@ -156,9 +202,8 @@ export default function Login() {
           disabled={isSubmitting}
         />
 
-        <Input
+        <PasswordInput
           id="password"
-          type="password"
           label="Password"
           autoComplete="current-password"
           value={password}

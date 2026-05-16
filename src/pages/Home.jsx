@@ -16,7 +16,7 @@ const features = [
     icon: HiOutlineLockClosed,
     title: 'Secure authentication',
     description:
-      'Role-based access with Supabase Auth, email verification, and optional two-factor OTP.',
+      'Role-based access with Supabase Auth and secure password sign-in.',
   },
   {
     icon: HiOutlineChartBar,
@@ -33,10 +33,11 @@ const features = [
 ];
 
 const flowSteps = [
-  'Landing page',
-  'Choose your role',
-  'Login or sign up',
-  'Your dashboard',
+  'Get started',
+  'Choose role',
+  'Sign in',
+  'Create account (optional)',
+  'Dashboard',
 ];
 
 export default function Home() {

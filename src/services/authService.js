@@ -26,7 +26,6 @@ export async function signUpWithEmail({
     email: email.trim(),
     password,
     options: {
-      emailRedirectTo: `${getAppOrigin()}${ROUTES.LOGIN}`,
       data: {
         full_name: fullName.trim(),
         phone: phone.trim(),
@@ -41,7 +40,7 @@ export async function signUpWithEmail({
     return data;
   }
 
-  if (data.user && data.session) {
+  if (data.user) {
     try {
       await createProfile({
         id: data.user.id,
@@ -94,14 +93,3 @@ export function onAuthStateChange(callback) {
   return subscription;
 }
 
-export async function resendVerificationEmail(email) {
-  const { data, error } = await supabase.auth.resend({
-    type: 'signup',
-    email: email.trim(),
-    options: {
-      emailRedirectTo: `${getAppOrigin()}${ROUTES.LOGIN}`,
-    },
-  });
-  if (error) throw error;
-  return data;
-}
