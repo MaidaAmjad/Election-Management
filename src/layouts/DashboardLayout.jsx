@@ -1,4 +1,4 @@
-import { Link, Outlet } from 'react-router-dom';
+import { Link, NavLink, Outlet } from 'react-router-dom';
 import {
   HiOutlineArrowRightOnRectangle,
   HiOutlineCog6Tooth,
@@ -82,18 +82,45 @@ export default function DashboardLayout({ title }) {
 
       {hasRole(role, [USER_ROLES.ELECTION_CREATOR]) && (
         <nav className="border-b border-slate-200 bg-white">
-          <div className="mx-auto flex max-w-7xl gap-1 px-4 sm:px-6 lg:px-8">
-            <Link
+          <div className="mx-auto flex max-w-7xl flex-wrap gap-1 px-4 sm:px-6 lg:px-8">
+            <NavLink
               to={ROUTES.CREATOR_DASHBOARD}
-              className="border-b-2 border-transparent px-3 py-3 text-sm font-medium text-slate-600 hover:border-slate-300 hover:text-slate-900"
+              end
+              className={({ isActive }) =>
+                [
+                  'border-b-2 px-3 py-3 text-sm font-medium transition-colors',
+                  isActive
+                    ? 'border-primary-600 text-primary-700'
+                    : 'border-transparent text-slate-600 hover:border-slate-300 hover:text-slate-900',
+                ].join(' ')
+              }
             >
               My elections
-            </Link>
+            </NavLink>
+            <NavLink
+              to={ROUTES.CREATOR_CANDIDATES}
+              className={({ isActive }) =>
+                [
+                  'border-b-2 px-3 py-3 text-sm font-medium transition-colors',
+                  isActive
+                    ? 'border-primary-600 text-primary-700'
+                    : 'border-transparent text-slate-600 hover:border-slate-300 hover:text-slate-900',
+                ].join(' ')
+              }
+            >
+              Candidates
+            </NavLink>
             <Link
               to={`${ROUTES.CREATOR_DASHBOARD}/elections/new`}
               className="border-b-2 border-transparent px-3 py-3 text-sm font-medium text-slate-600 hover:border-slate-300 hover:text-slate-900"
             >
               Create election
+            </Link>
+            <Link
+              to={`${ROUTES.CREATOR_CANDIDATES}/new`}
+              className="border-b-2 border-transparent px-3 py-3 text-sm font-medium text-slate-600 hover:border-slate-300 hover:text-slate-900"
+            >
+              Add candidate
             </Link>
           </div>
         </nav>

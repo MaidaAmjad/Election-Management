@@ -29,6 +29,10 @@ import CreatorApprovalRoute from '../components/routing/CreatorApprovalRoute';
 import ElectionListPage from '../pages/elections/ElectionListPage';
 import ElectionFormPage from '../pages/elections/ElectionFormPage';
 import ElectionViewPage from '../pages/elections/ElectionViewPage';
+import CandidateDashboardPage from '../pages/candidates/CandidateDashboardPage';
+import CandidateListPage from '../pages/candidates/CandidateListPage';
+import CandidateFormPage from '../pages/candidates/CandidateFormPage';
+import CandidateDetailPage from '../pages/candidates/CandidateDetailPage';
 import VoterDashboard from '../pages/VoterDashboard';
 import Unauthorized from '../pages/Unauthorized';
 import NotFound from '../pages/NotFound';
@@ -153,6 +157,11 @@ export default function AppRoutes() {
             <Route path="elections/new" element={<ElectionFormPage />} />
             <Route path="elections/:id" element={<ElectionViewPage />} />
             <Route path="elections/:id/edit" element={<ElectionFormPage />} />
+            <Route path="candidates" element={<CandidateDashboardPage />} />
+            <Route path="candidates/list" element={<CandidateListPage />} />
+            <Route path="candidates/new" element={<CandidateFormPage />} />
+            <Route path="candidates/:id" element={<CandidateDetailPage />} />
+            <Route path="candidates/:id/edit" element={<CandidateFormPage />} />
           </Route>
         </Route>
 

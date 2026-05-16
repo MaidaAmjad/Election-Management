@@ -26,15 +26,10 @@ export default function DeleteCandidateModal({
     >
       <p className="text-slate-600">
         Are you sure you want to delete this candidate?
-        {candidateName && (
-          <span className="mt-2 block font-semibold text-slate-900">
-            {candidateName}
-          </span>
-        )}
       </p>
-      <p className="mt-3 text-sm text-slate-500">
-        This will remove the candidate record and their photo from storage.
-      </p>
+      {candidateName && (
+        <p className="mt-2 font-semibold text-slate-900">{candidateName}</p>
+      )}
     </Modal>
   );
 }

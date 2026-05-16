@@ -136,6 +136,6 @@ export default function CandidateListPage() {
         candidateName={deleteTarget?.name}
         submitting={deleteSubmitting}
       />
-    </motion>
+    </div>
   );
 }
