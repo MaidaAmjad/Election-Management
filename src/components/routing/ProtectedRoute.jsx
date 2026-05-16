@@ -1,31 +1,24 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
-import { hasRole } from '../../utils/roleHelpers';
 import { ROUTES } from '../../utils/constants';
-import Spinner from '../ui/Spinner';
+import RouteLoader from './RouteLoader';
 
-export default function ProtectedRoute({ children, allowedRoles }) {
-  const { isAuthenticated, loading, profileLoading, role, isReady } = useAuth();
+/**
+ * Blocks unauthenticated users and redirects them to the login page.
+ * Preserves the attempted URL so the user can return after signing in.
+ */
+export default function ProtectedRoute({ children }) {
+  const { isAuthenticated, loading } = useAuth();
   const location = useLocation();
 
-  if (loading || (isAuthenticated && profileLoading)) {
-    return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <Spinner size="lg" />
-      </div>
-    );
+  if (loading) {
+    return <RouteLoader />;
   }
 
   if (!isAuthenticated) {
-    return <Navigate to={ROUTES.LOGIN} state={{ from: location }} replace />;
-  }
-
-  if (!isReady || !role) {
-    return <Navigate to={ROUTES.UNAUTHORIZED} replace />;
-  }
-
-  if (allowedRoles?.length && !hasRole(role, allowedRoles)) {
-    return <Navigate to={ROUTES.UNAUTHORIZED} replace />;
+    return (
+      <Navigate to={ROUTES.LOGIN} state={{ from: location }} replace />
+    );
   }
 
   return children;

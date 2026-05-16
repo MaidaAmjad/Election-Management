@@ -1,11 +1,17 @@
-import { Outlet } from 'react-router-dom';
-import { HiOutlineArrowRightOnRectangle } from 'react-icons/hi2';
+import { Link, Outlet } from 'react-router-dom';
+import {
+  HiOutlineArrowRightOnRectangle,
+  HiOutlineCog6Tooth,
+} from 'react-icons/hi2';
+import { ROUTES } from '../utils/constants';
 import { useAuth } from '../hooks/useAuth';
+import { useLogout } from '../hooks/useLogout';
 import { getRoleLabel } from '../utils/roleHelpers';
 import Button from '../components/ui/Button';
 
 export default function DashboardLayout({ title }) {
-  const { profile, role, user, signOut } = useAuth();
+  const { profile, role, user } = useAuth();
+  const handleLogout = useLogout();
   const displayName = profile?.full_name ?? user?.email ?? 'User';
 
   return (
@@ -19,18 +25,25 @@ export default function DashboardLayout({ title }) {
             <h1 className="text-lg font-semibold text-slate-900">{title}</h1>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3 sm:gap-4">
             <p className="hidden text-sm text-slate-600 sm:block">
               {displayName}
             </p>
+            <Link
+              to={ROUTES.SETTINGS}
+              className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900"
+            >
+              <HiOutlineCog6Tooth className="h-4 w-4" aria-hidden="true" />
+              <span className="hidden sm:inline">Settings</span>
+            </Link>
             <Button
               variant="secondary"
               size="sm"
-              onClick={signOut}
+              onClick={handleLogout}
               className="gap-2"
             >
               <HiOutlineArrowRightOnRectangle className="h-4 w-4" aria-hidden="true" />
-              Sign out
+              Logout
             </Button>
           </div>
         </div>

@@ -4,6 +4,7 @@ import {
   HiOutlineLockClosed,
   HiOutlineChartBar,
   HiOutlineUserGroup,
+  HiOutlineArrowRight,
 } from 'react-icons/hi2';
 import { useAuth } from '../hooks/useAuth';
 import Button from '../components/ui/Button';
@@ -15,25 +16,32 @@ const features = [
     icon: HiOutlineLockClosed,
     title: 'Secure authentication',
     description:
-      'Industry-standard auth powered by Supabase with encrypted sessions and role-based access control.',
+      'Role-based access with Supabase Auth, email verification, and optional two-factor OTP.',
   },
   {
     icon: HiOutlineChartBar,
     title: 'Election oversight',
     description:
-      'Manage elections, ballots, and results from a centralized dashboard built for election officers.',
+      'Election creators manage ballots and monitor voting in real time.',
   },
   {
     icon: HiOutlineUserGroup,
     title: 'Voter participation',
     description:
-      'Enable verified voters to participate in elections through a transparent, auditable platform.',
+      'Verified voters participate in elections through a transparent platform.',
   },
+];
+
+const flowSteps = [
+  'Landing page',
+  'Choose your role',
+  'Login or sign up',
+  'Your dashboard',
 ];
 
 export default function Home() {
   const { isAuthenticated, role } = useAuth();
-  const dashboardPath = role ? getDashboardPathForRole(role) : ROUTES.LOGIN;
+  const dashboardPath = getDashboardPathForRole(role);
 
   return (
     <>
@@ -52,36 +60,40 @@ export default function Home() {
             </h1>
 
             <p className="mt-6 text-lg text-primary-100 sm:text-xl">
-              Run secure, transparent elections with role-based access, real-time
-              oversight, and voter-verified participation.
+              Choose your role, authenticate securely, and access a dashboard
+              built for your responsibilities.
             </p>
 
             <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
-              {isAuthenticated ? (
+              {isAuthenticated && dashboardPath ? (
                 <Link to={dashboardPath}>
-                  <Button size="lg" className="min-w-[180px]">
+                  <Button size="lg" className="min-w-[200px]">
                     Go to dashboard
                   </Button>
                 </Link>
               ) : (
-                <>
-                  <Link to={ROUTES.SIGNUP}>
-                    <Button size="lg" className="min-w-[180px]">
-                      Create account
-                    </Button>
-                  </Link>
-                  <Link to={ROUTES.LOGIN}>
-                    <Button
-                      variant="secondary"
-                      size="lg"
-                      className="min-w-[180px] border-white/20 bg-white/10 text-white hover:bg-white/20"
-                    >
-                      Sign in
-                    </Button>
-                  </Link>
-                </>
+                <Link to={ROUTES.CHOOSE_ROLE}>
+                  <Button size="lg" className="min-w-[200px] gap-2">
+                    Get started
+                    <HiOutlineArrowRight className="h-5 w-5" aria-hidden="true" />
+                  </Button>
+                </Link>
               )}
             </div>
+
+            <ol className="mt-12 flex flex-wrap items-center justify-center gap-2 text-sm text-primary-200">
+              {flowSteps.map((step, index) => (
+                <li key={step} className="flex items-center gap-2">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white/20 text-xs font-bold">
+                    {index + 1}
+                  </span>
+                  <span>{step}</span>
+                  {index < flowSteps.length - 1 && (
+                    <span className="hidden text-primary-400 sm:inline">→</span>
+                  )}
+                </li>
+              ))}
+            </ol>
           </div>
         </div>
       </section>
@@ -92,8 +104,8 @@ export default function Home() {
             Built for security and transparency
           </h2>
           <p className="mt-4 text-lg text-slate-600">
-            Every component is designed to protect election integrity while
-            keeping the experience simple for administrators and voters.
+            Super Admins, Election Creators, and Voters each get a dedicated
+            experience with protected routes and profile-based permissions.
           </p>
         </div>
 

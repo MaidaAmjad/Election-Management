@@ -1,11 +1,8 @@
 -- =============================================================================
--- Election Management — profiles table
+-- Election Management — profiles table (complete auth module schema)
 -- Run in Supabase Dashboard → SQL Editor
 -- =============================================================================
 
--- -----------------------------------------------------------------------------
--- Table
--- -----------------------------------------------------------------------------
 create table if not exists public.profiles (
   id uuid primary key references auth.users (id) on delete cascade,
   full_name text not null,
@@ -20,14 +17,8 @@ create table if not exists public.profiles (
 comment on table public.profiles is 'Extended user data linked to Supabase Auth users';
 comment on column public.profiles.role is 'Super Admin | Election Creator | Voter';
 
--- -----------------------------------------------------------------------------
--- Row Level Security
--- -----------------------------------------------------------------------------
 alter table public.profiles enable row level security;
 
--- -----------------------------------------------------------------------------
--- Policies
--- -----------------------------------------------------------------------------
 drop policy if exists "Users can view own profile" on public.profiles;
 drop policy if exists "Users can update own profile" on public.profiles;
 
@@ -44,10 +35,7 @@ create policy "Users can update own profile"
   using (auth.uid() = id)
   with check (auth.uid() = id);
 
--- -----------------------------------------------------------------------------
--- Optional: auto-create profile on sign-up (recommended for this app)
--- Uses security definer so insert works before the user has a session.
--- -----------------------------------------------------------------------------
+-- Auto-create profile on sign-up from auth metadata
 create or replace function public.handle_new_user()
 returns trigger
 language plpgsql
@@ -61,7 +49,8 @@ begin
     coalesce(new.raw_user_meta_data ->> 'full_name', ''),
     coalesce(new.raw_user_meta_data ->> 'phone', ''),
     coalesce(new.raw_user_meta_data ->> 'role', 'Voter')
-  );
+  )
+  on conflict (id) do nothing;
   return new;
 end;
 $$;

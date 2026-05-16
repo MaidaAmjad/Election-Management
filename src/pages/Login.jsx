@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { HiOutlineExclamationCircle } from 'react-icons/hi2';
+import { HiOutlineArrowLeft, HiOutlineExclamationCircle } from 'react-icons/hi2';
 import AuthCard from '../components/auth/AuthCard';
+import SelectedRoleBanner from '../components/auth/SelectedRoleBanner';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import { useAuth } from '../hooks/useAuth';
@@ -11,17 +12,29 @@ import {
   getAuthErrorMessage,
   validateLoginForm,
 } from '../utils/loginValidation';
-import { getDashboardPathForRole } from '../utils/roleHelpers';
+import { getDashboardPathForRole, normalizeRole } from '../utils/roleHelpers';
+import { getSelectedRole } from '../utils/roleStorage';
 
 export default function Login() {
   const navigate = useNavigate();
-  const { signIn } = useAuth();
+  const { login, sendMfaOtp } = useAuth();
+  const selectedRole = getSelectedRole();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState({});
   const [authError, setAuthError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!selectedRole) {
+      navigate(ROUTES.CHOOSE_ROLE, { replace: true });
+    }
+  }, [selectedRole, navigate]);
+
+  if (!selectedRole) {
+    return null;
+  }
 
   function clearFieldError(field) {
     setErrors((prev) => {
@@ -48,7 +61,7 @@ export default function Login() {
     setIsSubmitting(true);
 
     try {
-      const { profile } = await signIn(email, password);
+      const { profile } = await login(email, password);
 
       if (!profile?.role) {
         setAuthError(
@@ -57,8 +70,27 @@ export default function Login() {
         return;
       }
 
+      const actualRole = normalizeRole(profile.role);
+      if (actualRole !== selectedRole) {
+        setAuthError('Incorrect role selected');
+        toast.error('Incorrect role selected');
+        return;
+      }
+
+      if (profile.mfa_email_enabled) {
+        await sendMfaOtp(email);
+        toast.success('Verification code sent to your email.');
+        navigate(ROUTES.VERIFY_MFA, {
+          replace: true,
+          state: {
+            from: { pathname: getDashboardPathForRole(actualRole) },
+          },
+        });
+        return;
+      }
+
       toast.success('Welcome back!');
-      navigate(getDashboardPathForRole(profile.role), { replace: true });
+      navigate(getDashboardPathForRole(actualRole), { replace: true });
     } catch (error) {
       const message = getAuthErrorMessage(error);
       setAuthError(message);
@@ -74,16 +106,27 @@ export default function Login() {
       subtitle="Access your election management account"
       footer={
         <p className="text-slate-600">
-          Don&apos;t have an account?{' '}
+          Need a different role?{' '}
           <Link
-            to={ROUTES.SIGNUP}
+            to={ROUTES.CHOOSE_ROLE}
             className="font-medium text-primary-600 hover:text-primary-700"
           >
-            Create one
+            Choose role
           </Link>
         </p>
       }
     >
+      <div className="mb-5 space-y-4">
+        <Link
+          to={ROUTES.CHOOSE_ROLE}
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-primary-700"
+        >
+          <HiOutlineArrowLeft className="h-4 w-4" aria-hidden="true" />
+          Back
+        </Link>
+        <SelectedRoleBanner role={selectedRole} mode="login" />
+      </div>
+
       <form onSubmit={handleSubmit} className="space-y-5" noValidate>
         {authError && (
           <div

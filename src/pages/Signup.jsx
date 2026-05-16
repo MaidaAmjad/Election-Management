@@ -1,13 +1,19 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import { HiOutlineArrowLeft, HiOutlineExclamationCircle } from 'react-icons/hi2';
 import AuthCard from '../components/auth/AuthCard';
+import SelectedRoleBanner from '../components/auth/SelectedRoleBanner';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import { useAuth } from '../hooks/useAuth';
-import { ROUTES, USER_ROLES } from '../utils/constants';
+import { ROUTES } from '../utils/constants';
 import { validateSignupForm } from '../utils/signupValidation';
 import { normalizePhone } from '../utils/validators';
+import {
+  getSelectedRole,
+  isSignupAllowedForRole,
+} from '../utils/roleStorage';
 
 const initialForm = {
   fullName: '',
@@ -19,11 +25,28 @@ const initialForm = {
 
 export default function Signup() {
   const navigate = useNavigate();
-  const { signUp, signOut } = useAuth();
+  const { signup, logout } = useAuth();
+  const selectedRole = getSelectedRole();
 
   const [form, setForm] = useState(initialForm);
   const [errors, setErrors] = useState({});
+  const [formError, setFormError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!selectedRole) {
+      navigate(ROUTES.CHOOSE_ROLE, { replace: true });
+      return;
+    }
+    if (!isSignupAllowedForRole(selectedRole)) {
+      navigate(ROUTES.CHOOSE_ROLE, { replace: true });
+      toast.error('Admin accounts are created by the system.');
+    }
+  }, [selectedRole, navigate]);
+
+  if (!selectedRole || !isSignupAllowedForRole(selectedRole)) {
+    return null;
+  }
 
   function updateField(field) {
     return (event) => {
@@ -35,6 +58,7 @@ export default function Signup() {
           return next;
         });
       }
+      if (formError) setFormError('');
     };
   }
 
@@ -46,17 +70,19 @@ export default function Signup() {
 
   async function handleSubmit(event) {
     event.preventDefault();
+    setFormError('');
+
     if (!validate()) return;
 
     setIsSubmitting(true);
 
     try {
-      const { user } = await signUp({
+      const { user } = await signup({
         email: form.email,
         password: form.password,
         fullName: form.fullName,
         phone: normalizePhone(form.phone),
-        role: USER_ROLES.VOTER,
+        role: selectedRole,
       });
 
       if (user?.identities?.length === 0) {
@@ -65,7 +91,7 @@ export default function Signup() {
         return;
       }
 
-      await signOut();
+      await logout();
 
       toast.success('Account created! Check your email to verify your account.');
 
@@ -74,7 +100,9 @@ export default function Signup() {
         state: { email: form.email.trim() },
       });
     } catch (error) {
-      toast.error(error.message ?? 'Failed to create account. Please try again.');
+      const message = error.message ?? 'Failed to create account. Please try again.';
+      setFormError(message);
+      toast.error(message);
     } finally {
       setIsSubmitting(false);
     }
@@ -84,7 +112,7 @@ export default function Signup() {
     <AuthCard
       className="max-w-lg"
       title="Create account"
-      subtitle="Register as a voter to participate in secure online elections"
+      subtitle="Register for secure online elections"
       footer={
         <p className="text-slate-600">
           Already have an account?{' '}
@@ -97,44 +125,66 @@ export default function Signup() {
         </p>
       }
     >
+      <div className="mb-5 space-y-4">
+        <Link
+          to={ROUTES.CHOOSE_ROLE}
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-primary-700"
+        >
+          <HiOutlineArrowLeft className="h-4 w-4" aria-hidden="true" />
+          Back
+        </Link>
+        <SelectedRoleBanner role={selectedRole} mode="signup" />
+      </div>
+
       <form onSubmit={handleSubmit} className="space-y-5" noValidate>
-        <div className="grid gap-5 sm:grid-cols-2">
-          <Input
-            id="fullName"
-            type="text"
-            label="Full name"
-            autoComplete="name"
-            value={form.fullName}
-            onChange={updateField('fullName')}
-            error={errors.fullName}
-            placeholder="Jane Doe"
-            className="sm:col-span-2"
-          />
+        {formError && (
+          <div
+            role="alert"
+            className="flex gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+          >
+            <HiOutlineExclamationCircle
+              className="mt-0.5 h-5 w-5 shrink-0"
+              aria-hidden="true"
+            />
+            <span>{formError}</span>
+          </div>
+        )}
 
-          <Input
-            id="email"
-            type="email"
-            label="Email address"
-            autoComplete="email"
-            value={form.email}
-            onChange={updateField('email')}
-            error={errors.email}
-            placeholder="you@example.com"
-            className="sm:col-span-2"
-          />
+        <Input
+          id="fullName"
+          type="text"
+          label="Full name"
+          autoComplete="name"
+          value={form.fullName}
+          onChange={updateField('fullName')}
+          error={errors.fullName}
+          placeholder="Jane Doe"
+          disabled={isSubmitting}
+        />
 
-          <Input
-            id="phone"
-            type="tel"
-            label="Phone number"
-            autoComplete="tel"
-            value={form.phone}
-            onChange={updateField('phone')}
-            error={errors.phone}
-            placeholder="+1 555 123 4567"
-            className="sm:col-span-2"
-          />
-        </div>
+        <Input
+          id="email"
+          type="email"
+          label="Email address"
+          autoComplete="email"
+          value={form.email}
+          onChange={updateField('email')}
+          error={errors.email}
+          placeholder="you@example.com"
+          disabled={isSubmitting}
+        />
+
+        <Input
+          id="phone"
+          type="tel"
+          label="Phone number"
+          autoComplete="tel"
+          value={form.phone}
+          onChange={updateField('phone')}
+          error={errors.phone}
+          placeholder="+1 555 123 4567"
+          disabled={isSubmitting}
+        />
 
         <Input
           id="password"
@@ -145,6 +195,7 @@ export default function Signup() {
           onChange={updateField('password')}
           error={errors.password}
           placeholder="At least 8 characters"
+          disabled={isSubmitting}
         />
 
         <Input
@@ -156,16 +207,22 @@ export default function Signup() {
           onChange={updateField('confirmPassword')}
           error={errors.confirmPassword}
           placeholder="Re-enter your password"
+          disabled={isSubmitting}
         />
 
         <p className="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-500">
-          Your account will be registered as a{' '}
-          <span className="font-medium text-slate-700">Voter</span>. A
+          Role is set from your selection and cannot be changed here. A
           verification email will be sent after sign up.
         </p>
 
-        <Button type="submit" className="w-full" size="lg" isLoading={isSubmitting}>
-          Create account
+        <Button
+          type="submit"
+          className="w-full"
+          size="lg"
+          isLoading={isSubmitting}
+          disabled={isSubmitting}
+        >
+          {isSubmitting ? 'Creating account…' : 'Create account'}
         </Button>
       </form>
     </AuthCard>

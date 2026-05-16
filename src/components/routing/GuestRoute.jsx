@@ -2,21 +2,28 @@ import { Navigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { ROUTES } from '../../utils/constants';
 import { getDashboardPathForRole } from '../../utils/roleHelpers';
-import Spinner from '../ui/Spinner';
+import RouteLoader from './RouteLoader';
 
 export default function GuestRoute({ children }) {
-  const { isAuthenticated, loading, profileLoading, role, isReady } = useAuth();
+  const {
+    isAuthenticated,
+    loading,
+    profileLoading,
+    role,
+    isReady,
+    requiresMfa,
+  } = useAuth();
 
   if (loading || (isAuthenticated && profileLoading)) {
-    return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <Spinner size="lg" />
-      </div>
-    );
+    return <RouteLoader />;
   }
 
   if (isAuthenticated && isReady && !role) {
     return <Navigate to={ROUTES.UNAUTHORIZED} replace />;
+  }
+
+  if (isAuthenticated && isReady && requiresMfa) {
+    return <Navigate to={ROUTES.VERIFY_MFA} replace />;
   }
 
   if (isAuthenticated && isReady && role) {

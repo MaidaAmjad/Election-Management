@@ -12,8 +12,19 @@ import {
   signOut as authSignOut,
   signUpWithEmail,
   resetPassword,
+  updateUserPassword,
 } from '../services/authService';
-import { getProfileByUserId } from '../services/profileService';
+import { sendEmailOtp, verifyEmailOtp } from '../services/mfaService';
+import {
+  ensureProfileForUser,
+  updateMfaEmailEnabled,
+} from '../services/profileService';
+import { resolveRole } from '../utils/roleHelpers';
+import {
+  clearMfaVerified,
+  isMfaVerified,
+  setMfaVerified,
+} from '../utils/mfaStorage';
 
 export const AuthContext = createContext(null);
 
@@ -23,19 +34,38 @@ export function AuthProvider({ children }) {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [profileLoading, setProfileLoading] = useState(false);
+  const [authEvent, setAuthEvent] = useState(null);
+  const [mfaVerified, setMfaVerifiedState] = useState(false);
 
-  const loadProfile = useCallback(async (userId) => {
-    if (!userId) {
+  const syncMfaVerified = useCallback((userId) => {
+    setMfaVerifiedState(userId ? isMfaVerified(userId) : false);
+  }, []);
+
+  const loadProfile = useCallback(async (authUser) => {
+    if (!authUser?.id) {
       setProfile(null);
       return null;
     }
 
     setProfileLoading(true);
     try {
-      const data = await getProfileByUserId(userId);
+      const data = await ensureProfileForUser(authUser);
       setProfile(data);
       return data;
-    } catch {
+    } catch (err) {
+      console.error('[Auth] Profile load failed:', err?.message ?? err);
+      const fallbackRole = resolveRole(null, authUser);
+      if (fallbackRole) {
+        const fallbackProfile = {
+          id: authUser.id,
+          role: fallbackRole,
+          full_name: authUser.user_metadata?.full_name ?? authUser.email,
+          phone: authUser.user_metadata?.phone ?? '',
+          mfa_email_enabled: false,
+        };
+        setProfile(fallbackProfile);
+        return fallbackProfile;
+      }
       setProfile(null);
       return null;
     } finally {
@@ -44,48 +74,59 @@ export function AuthProvider({ children }) {
   }, []);
 
   const clearAuth = useCallback(() => {
-    setSession(null);
+    if (user?.id) {
+      clearMfaVerified(user.id);
+    }
     setUser(null);
+    setSession(null);
     setProfile(null);
-  }, []);
+    setAuthEvent(null);
+    setMfaVerifiedState(false);
+  }, [user?.id]);
+
+  const applySession = useCallback(
+    async (event, nextSession) => {
+      setAuthEvent(event);
+      setSession(nextSession);
+      const nextUser = nextSession?.user ?? null;
+      setUser(nextUser);
+
+      if (nextUser && event !== 'PASSWORD_RECOVERY') {
+        await loadProfile(nextUser);
+        syncMfaVerified(nextUser.id);
+      } else if (!nextUser) {
+        setProfile(null);
+        setMfaVerifiedState(false);
+      }
+    },
+    [loadProfile, syncMfaVerified],
+  );
 
   useEffect(() => {
     let mounted = true;
 
-    async function initAuth() {
+    async function restoreSession() {
       try {
         const currentSession = await getSession();
         if (!mounted) return;
-
-        setSession(currentSession);
-        const currentUser = currentSession?.user ?? null;
-        setUser(currentUser);
-
-        if (currentUser) {
-          await loadProfile(currentUser.id);
-        }
+        await applySession('INITIAL_SESSION', currentSession);
       } catch {
-        if (mounted) clearAuth();
+        if (mounted) {
+          setUser(null);
+          setSession(null);
+          setProfile(null);
+          setMfaVerifiedState(false);
+        }
       } finally {
         if (mounted) setLoading(false);
       }
     }
 
-    initAuth();
+    restoreSession();
 
-    const subscription = onAuthStateChange(async (nextSession) => {
+    const subscription = onAuthStateChange(async (event, nextSession) => {
       if (!mounted) return;
-
-      setSession(nextSession);
-      const nextUser = nextSession?.user ?? null;
-      setUser(nextUser);
-
-      if (nextUser) {
-        await loadProfile(nextUser.id);
-      } else {
-        setProfile(null);
-      }
-
+      await applySession(event, nextSession);
       setLoading(false);
     });
 
@@ -93,9 +134,9 @@ export function AuthProvider({ children }) {
       mounted = false;
       subscription.unsubscribe();
     };
-  }, [loadProfile, clearAuth]);
+  }, [applySession]);
 
-  const signIn = useCallback(
+  const login = useCallback(
     async (email, password) => {
       const { session: newSession, user: newUser } = await signInWithEmail(
         email,
@@ -105,32 +146,92 @@ export function AuthProvider({ children }) {
       setSession(newSession);
       setUser(newUser);
 
-      const userProfile = newUser ? await loadProfile(newUser.id) : null;
+      clearMfaVerified(newUser?.id);
+      setMfaVerifiedState(false);
+
+      const userProfile = newUser ? await loadProfile(newUser) : null;
 
       return {
         session: newSession,
         user: newUser,
         profile: userProfile,
+        requiresMfa: Boolean(userProfile?.mfa_email_enabled),
       };
     },
     [loadProfile],
   );
 
-  const signUp = useCallback(async (credentials) => {
-    const data = await signUpWithEmail(credentials);
-    return data;
+  const signup = useCallback(async (credentials) => {
+    return signUpWithEmail(credentials);
   }, []);
 
-  const signOut = useCallback(async () => {
-    await authSignOut();
-    clearAuth();
-  }, [clearAuth]);
+  const logout = useCallback(async () => {
+    const userId = user?.id;
+    try {
+      await authSignOut();
+    } finally {
+      if (userId) clearMfaVerified(userId);
+      setUser(null);
+      setSession(null);
+      setProfile(null);
+      setAuthEvent(null);
+      setMfaVerifiedState(false);
+    }
+  }, [user?.id]);
 
   const sendPasswordReset = useCallback(async (email) => {
     await resetPassword(email);
   }, []);
 
-  const role = profile?.role ?? null;
+  const updatePassword = useCallback(async (password) => {
+    return updateUserPassword(password);
+  }, []);
+
+  const sendMfaOtp = useCallback(async (email) => {
+    await sendEmailOtp(email);
+  }, []);
+
+  const verifyMfa = useCallback(
+    async (email, token) => {
+      await verifyEmailOtp(email, token);
+
+      if (user?.id) {
+        setMfaVerified(user.id);
+        setMfaVerifiedState(true);
+      }
+    },
+    [user?.id],
+  );
+
+  const setMfaEnabled = useCallback(
+    async (enabled) => {
+      if (!user?.id) throw new Error('Not authenticated');
+
+      const updated = await updateMfaEmailEnabled(user.id, enabled);
+      setProfile(updated);
+
+      if (!enabled && user.id) {
+        clearMfaVerified(user.id);
+        setMfaVerifiedState(false);
+      }
+
+      return updated;
+    },
+    [user?.id],
+  );
+
+  const markMfaVerified = useCallback(() => {
+    if (user?.id) {
+      setMfaVerified(user.id);
+      setMfaVerifiedState(true);
+    }
+  }, [user?.id]);
+
+  const role = useMemo(() => resolveRole(profile, user), [profile, user]);
+  const isPasswordRecovery = authEvent === 'PASSWORD_RECOVERY';
+  const requiresMfa = Boolean(
+    profile?.mfa_email_enabled && user && !mfaVerified && !isPasswordRecovery,
+  );
 
   const value = useMemo(
     () => ({
@@ -140,13 +241,22 @@ export function AuthProvider({ children }) {
       role,
       loading,
       profileLoading,
+      authEvent,
+      isPasswordRecovery,
+      mfaVerified,
+      requiresMfa,
       isAuthenticated: Boolean(user && session),
-      isReady: !loading && (!user || !profileLoading),
-      signIn,
-      signUp,
-      signOut,
+      isReady: !loading && (!user || !profileLoading || isPasswordRecovery),
+      login,
+      signup,
+      logout,
       sendPasswordReset,
-      refreshProfile: () => (user ? loadProfile(user.id) : Promise.resolve(null)),
+      updatePassword,
+      sendMfaOtp,
+      verifyMfa,
+      setMfaEnabled,
+      markMfaVerified,
+      refreshProfile: () => (user ? loadProfile(user) : Promise.resolve(null)),
     }),
     [
       user,
@@ -155,10 +265,19 @@ export function AuthProvider({ children }) {
       role,
       loading,
       profileLoading,
-      signIn,
-      signUp,
-      signOut,
+      authEvent,
+      isPasswordRecovery,
+      mfaVerified,
+      requiresMfa,
+      login,
+      signup,
+      logout,
       sendPasswordReset,
+      updatePassword,
+      sendMfaOtp,
+      verifyMfa,
+      setMfaEnabled,
+      markMfaVerified,
       loadProfile,
     ],
   );

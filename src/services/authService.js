@@ -1,6 +1,10 @@
 import { supabase } from '../supabase/supabase';
-import { USER_ROLES } from '../utils/constants';
+import { ROUTES, USER_ROLES } from '../utils/constants';
 import { createProfile } from './profileService';
+
+function getAppOrigin() {
+  return window.location.origin;
+}
 
 export async function signInWithEmail(email, password) {
   const { data, error } = await supabase.auth.signInWithPassword({
@@ -22,7 +26,7 @@ export async function signUpWithEmail({
     email: email.trim(),
     password,
     options: {
-      emailRedirectTo: `${window.location.origin}/login`,
+      emailRedirectTo: `${getAppOrigin()}${ROUTES.LOGIN}`,
       data: {
         full_name: fullName.trim(),
         phone: phone.trim(),
@@ -62,9 +66,15 @@ export async function resetPassword(email) {
   const { data, error } = await supabase.auth.resetPasswordForEmail(
     email.trim(),
     {
-      redirectTo: `${window.location.origin}/login`,
+      redirectTo: `${getAppOrigin()}${ROUTES.RESET_PASSWORD}`,
     },
   );
+  if (error) throw error;
+  return data;
+}
+
+export async function updateUserPassword(password) {
+  const { data, error } = await supabase.auth.updateUser({ password });
   if (error) throw error;
   return data;
 }
@@ -78,8 +88,8 @@ export async function getSession() {
 export function onAuthStateChange(callback) {
   const {
     data: { subscription },
-  } = supabase.auth.onAuthStateChange((_event, session) => {
-    callback(session);
+  } = supabase.auth.onAuthStateChange((event, session) => {
+    callback(event, session);
   });
   return subscription;
 }
@@ -89,7 +99,7 @@ export async function resendVerificationEmail(email) {
     type: 'signup',
     email: email.trim(),
     options: {
-      emailRedirectTo: `${window.location.origin}/login`,
+      emailRedirectTo: `${getAppOrigin()}${ROUTES.LOGIN}`,
     },
   });
   if (error) throw error;
