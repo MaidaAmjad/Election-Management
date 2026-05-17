@@ -76,6 +76,18 @@ export default function DashboardLayout({ title }) {
             >
               Activity logs
             </Link>
+            <Link
+              to={ROUTES.ADMIN_FINALIZED_VOTERS}
+              className="border-b-2 border-transparent px-3 py-3 text-sm font-medium text-slate-600 hover:border-slate-300 hover:text-slate-900"
+            >
+              Finalized voters
+            </Link>
+            <Link
+              to={ROUTES.ADMIN_SECRET_IDS}
+              className="border-b-2 border-transparent px-3 py-3 text-sm font-medium text-slate-600 hover:border-slate-300 hover:text-slate-900"
+            >
+              Secret IDs
+            </Link>
           </div>
         </nav>
       )}
@@ -109,6 +121,45 @@ export default function DashboardLayout({ title }) {
               }
             >
               My joined elections
+            </NavLink>
+            <NavLink
+              to={ROUTES.VOTER_SECRET_IDS}
+              className={({ isActive }) =>
+                [
+                  'border-b-2 px-3 py-3 text-sm font-medium transition-colors',
+                  isActive
+                    ? 'border-primary-600 text-primary-700'
+                    : 'border-transparent text-slate-600 hover:border-slate-300 hover:text-slate-900',
+                ].join(' ')
+              }
+            >
+              My secret IDs
+            </NavLink>
+            <NavLink
+              to={ROUTES.VOTER_VOTE}
+              className={({ isActive }) =>
+                [
+                  'border-b-2 px-3 py-3 text-sm font-medium transition-colors',
+                  isActive
+                    ? 'border-primary-600 text-primary-700'
+                    : 'border-transparent text-slate-600 hover:border-slate-300 hover:text-slate-900',
+                ].join(' ')
+              }
+            >
+              Vote
+            </NavLink>
+            <NavLink
+              to={ROUTES.VOTER_VOTING_HISTORY}
+              className={({ isActive }) =>
+                [
+                  'border-b-2 px-3 py-3 text-sm font-medium transition-colors',
+                  isActive
+                    ? 'border-primary-600 text-primary-700'
+                    : 'border-transparent text-slate-600 hover:border-slate-300 hover:text-slate-900',
+                ].join(' ')
+              }
+            >
+              Voting history
             </NavLink>
             <Link
               to={ROUTES.PUBLIC_ELECTIONS}
@@ -161,6 +212,18 @@ export default function DashboardLayout({ title }) {
               className="border-b-2 border-transparent px-3 py-3 text-sm font-medium text-slate-600 hover:border-slate-300 hover:text-slate-900"
             >
               Add candidate
+            </Link>
+            <Link
+              to={ROUTES.CREATOR_FINALIZED_VOTERS}
+              className="border-b-2 border-transparent px-3 py-3 text-sm font-medium text-slate-600 hover:border-slate-300 hover:text-slate-900"
+            >
+              Finalized voters
+            </Link>
+            <Link
+              to={ROUTES.CREATOR_SECRET_IDS}
+              className="border-b-2 border-transparent px-3 py-3 text-sm font-medium text-slate-600 hover:border-slate-300 hover:text-slate-900"
+            >
+              Secret IDs
             </Link>
           </div>
         </nav>

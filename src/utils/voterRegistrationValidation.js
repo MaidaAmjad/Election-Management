@@ -3,6 +3,7 @@ import { PUBLIC_ELECTION_STATUS } from './publicElectionConstants';
 import { getPublicElectionStatus } from './publicElectionStatus';
 import { USER_ROLES } from './constants';
 import { REGISTRATION_ERROR_CODES } from './voterRegistrationConstants';
+import { REGISTRATION_STATUS } from './finalizationConstants';
 
 /**
  * Client-side eligibility checks before opening the join modal or calling RPC.
@@ -59,6 +60,22 @@ export function validateVoterRegistrationEligibility({
       eligible: false,
       code: REGISTRATION_ERROR_CODES.NOT_ELIGIBLE,
       message: 'You are not eligible for this election',
+    };
+  }
+
+  if (election.registration_status === REGISTRATION_STATUS.FINALIZED) {
+    return {
+      eligible: false,
+      code: 'FINALIZED',
+      message: 'Voter List Finalized',
+    };
+  }
+
+  if (election.registration_status === REGISTRATION_STATUS.LOCKED) {
+    return {
+      eligible: false,
+      code: 'LOCKED',
+      message: 'Registration Closed',
     };
   }
 

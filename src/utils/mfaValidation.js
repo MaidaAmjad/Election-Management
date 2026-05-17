@@ -1,28 +1,23 @@
-const OTP_REGEX = /^\d{6}$/;
-
-export function validateOtpCode(code) {
+export function validateOtpCode(otp) {
   const errors = {};
+  const trimmed = otp?.trim() ?? '';
 
-  if (!code.trim()) {
-    errors.otp = 'Verification code is required.';
-  } else if (!OTP_REGEX.test(code.trim())) {
+  if (!trimmed) {
     errors.otp = 'Enter the 6-digit code from your email.';
+  } else if (!/^\d{6}$/.test(trimmed)) {
+    errors.otp = 'Enter a valid 6-digit code.';
   }
 
   return errors;
 }
 
 export function isEmailRateLimitError(error) {
-  const message = (error?.message ?? '').toLowerCase();
-  return (
-    message.includes('rate limit') ||
-    message.includes('too many requests') ||
-    error?.status === 429
-  );
+  const message = error?.message?.toLowerCase() ?? '';
+  return message.includes('rate limit') || message.includes('too many');
 }
 
 export function getEmailRateLimitMessage() {
-  return 'Too many emails were sent recently. Wait about an hour, then try again—or disable email 2FA in Settings if you enabled it.';
+  return 'Too many emails were sent recently. Please wait a few minutes and try again.';
 }
 
 export function getMfaErrorMessage(error) {
@@ -32,8 +27,8 @@ export function getMfaErrorMessage(error) {
     return getEmailRateLimitMessage();
   }
 
-  if (message.includes('expired') || message.includes('invalid')) {
-    return 'Invalid or expired code. Request a new code and try again.';
+  if (message.includes('Invalid or expired')) {
+    return 'Invalid or expired verification code. Request a new code and try again.';
   }
 
   return message || 'Verification failed. Please try again.';

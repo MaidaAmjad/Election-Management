@@ -1,0 +1,3 @@
+# Edge Function: allow calls with anon key (forgot password, sign-up, etc.)
+[functions.send-email]
+verify_jwt = false

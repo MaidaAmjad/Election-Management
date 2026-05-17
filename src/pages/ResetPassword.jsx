@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { HiOutlineExclamationCircle, HiOutlineKey } from 'react-icons/hi2';
 import AuthCard from '../components/auth/AuthCard';
@@ -16,7 +16,11 @@ import {
 
 export default function ResetPassword() {
   const navigate = useNavigate();
-  const { updatePassword, logout, loading: authLoading } = useAuth();
+  const [searchParams] = useSearchParams();
+  const resetToken = searchParams.get('token');
+
+  const { updatePassword, completePasswordReset, logout, loading: authLoading } =
+    useAuth();
 
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -26,7 +30,14 @@ export default function ResetPassword() {
   const [sessionReady, setSessionReady] = useState(false);
   const [invalidLink, setInvalidLink] = useState(false);
 
+  const usesResendToken = Boolean(resetToken);
+
   useEffect(() => {
+    if (usesResendToken) {
+      setSessionReady(true);
+      return undefined;
+    }
+
     let mounted = true;
 
     async function verifyRecoverySession() {
@@ -51,7 +62,7 @@ export default function ResetPassword() {
     return () => {
       mounted = false;
     };
-  }, [authLoading]);
+  }, [authLoading, usesResendToken]);
 
   function validate() {
     const nextErrors = validateResetPasswordForm({ password, confirmPassword });
@@ -68,6 +79,13 @@ export default function ResetPassword() {
     setIsSubmitting(true);
 
     try {
+      if (usesResendToken) {
+        await completePasswordReset(resetToken, password);
+        toast.success('Password updated successfully. Sign in with your new password.');
+        navigate(ROUTES.LOGIN, { replace: true });
+        return;
+      }
+
       await updatePassword(password);
       await logout();
       toast.success('Password updated successfully. Sign in with your new password.');

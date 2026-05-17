@@ -7,6 +7,7 @@ import { useJoinElection } from '../../hooks/useJoinElection';
 import { ROUTES, USER_ROLES } from '../../utils/constants';
 import { PUBLIC_ELECTION_STATUS } from '../../utils/publicElectionConstants';
 import { VOTER_REGISTRATION_STATUS } from '../../utils/voterRegistrationConstants';
+import { REGISTRATION_STATUS } from '../../utils/finalizationConstants';
 import {
   getRegistrationDeadlineState,
   validateVoterRegistrationEligibility,
@@ -82,6 +83,24 @@ export default function JoinElectionButton({
         {!isWaitlisted && (
           <p className="text-sm text-emerald-700">Already Registered</p>
         )}
+      </div>
+    );
+  }
+
+  if (election.registration_status === REGISTRATION_STATUS.FINALIZED) {
+    return (
+      <div className="space-y-1">
+        <Button disabled className="w-full sm:w-auto">Join Election</Button>
+        <p className="text-sm font-medium text-amber-800">Voter List Finalized</p>
+      </div>
+    );
+  }
+
+  if (election.registration_status === REGISTRATION_STATUS.LOCKED) {
+    return (
+      <div className="space-y-1">
+        <Button disabled className="w-full sm:w-auto">Registration Closed</Button>
+        <p className="text-sm text-slate-600">Registration is locked for this election.</p>
       </div>
     );
   }

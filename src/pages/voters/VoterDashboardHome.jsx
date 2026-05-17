@@ -35,6 +35,27 @@ export default function VoterDashboardHome() {
             My joined elections
             <HiOutlineArrowRight className="h-4 w-4" />
           </Link>
+          <Link
+            to={ROUTES.VOTER_SECRET_IDS}
+            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          >
+            My secret IDs
+            <HiOutlineArrowRight className="h-4 w-4" />
+          </Link>
+          <Link
+            to={ROUTES.VOTER_VOTE}
+            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          >
+            Cast vote
+            <HiOutlineArrowRight className="h-4 w-4" />
+          </Link>
+          <Link
+            to={ROUTES.VOTER_VOTING_HISTORY}
+            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          >
+            Voting history
+            <HiOutlineArrowRight className="h-4 w-4" />
+          </Link>
         </div>
       </section>
 

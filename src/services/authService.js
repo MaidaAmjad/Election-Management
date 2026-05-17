@@ -1,10 +1,11 @@
 import { supabase } from '../supabase/supabase';
 import { ROUTES, USER_ROLES } from '../utils/constants';
 import { createProfile } from './profileService';
-
-function getAppOrigin() {
-  return window.location.origin;
-}
+import {
+  confirmSignupEmail,
+  sendPasswordResetEmail,
+  completePasswordResetWithToken,
+} from './emailService';
 
 export async function signInWithEmail(email, password) {
   const { data, error } = await supabase.auth.signInWithPassword({
@@ -51,6 +52,14 @@ export async function signUpWithEmail({
     } catch (profileError) {
       console.error('[Signup] Profile insert failed:', profileError.message);
     }
+
+    if (!data.session) {
+      try {
+        await confirmSignupEmail(data.user.id);
+      } catch (confirmError) {
+        console.error('[Signup] Email confirm failed:', confirmError.message);
+      }
+    }
   }
 
   return data;
@@ -61,15 +70,14 @@ export async function signOut() {
   if (error) throw error;
 }
 
+/** Password reset email via Resend (not Supabase Auth mail). */
 export async function resetPassword(email) {
-  const { data, error } = await supabase.auth.resetPasswordForEmail(
-    email.trim(),
-    {
-      redirectTo: `${getAppOrigin()}${ROUTES.RESET_PASSWORD}`,
-    },
-  );
-  if (error) throw error;
-  return data;
+  await sendPasswordResetEmail(email);
+}
+
+/** Complete reset using token from email link. */
+export async function resetPasswordWithToken(token, password) {
+  await completePasswordResetWithToken(token, password);
 }
 
 export async function updateUserPassword(password) {
@@ -92,4 +100,3 @@ export function onAuthStateChange(callback) {
   });
   return subscription;
 }
-

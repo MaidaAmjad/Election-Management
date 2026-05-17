@@ -35,6 +35,19 @@ import CandidateFormPage from '../pages/candidates/CandidateFormPage';
 import CandidateDetailPage from '../pages/candidates/CandidateDetailPage';
 import VoterDashboard from '../pages/VoterDashboard';
 import MyJoinedElectionsPage from '../pages/voters/MyJoinedElectionsPage';
+import AdminFinalizedVotersPage from '../pages/finalization/AdminFinalizedVotersPage';
+import AdminFinalizationDetailPage from '../pages/finalization/AdminFinalizationDetailPage';
+import CreatorFinalizedVotersPage from '../pages/finalization/CreatorFinalizedVotersPage';
+import CreatorFinalizationDetailPage from '../pages/finalization/CreatorFinalizationDetailPage';
+import AdminSecretIdManagementPage from '../pages/secretid/AdminSecretIdManagementPage';
+import AdminSecretIdElectionPage from '../pages/secretid/AdminSecretIdElectionPage';
+import CreatorSecretIdManagementPage from '../pages/secretid/CreatorSecretIdManagementPage';
+import CreatorSecretIdElectionPage from '../pages/secretid/CreatorSecretIdElectionPage';
+import MySecretIdsPage from '../pages/voters/MySecretIdsPage';
+import VoterVoteListPage from '../pages/voting/VoterVoteListPage';
+import VoterElectionPollsPage from '../pages/voting/VoterElectionPollsPage';
+import CastVotePage from '../pages/voting/CastVotePage';
+import MyVotingHistoryPage from '../pages/voting/MyVotingHistoryPage';
 import Unauthorized from '../pages/Unauthorized';
 import NotFound from '../pages/NotFound';
 import { ROUTES, USER_ROLES } from '../utils/constants';
@@ -134,6 +147,16 @@ export default function AppRoutes() {
           <Route path="requests" element={<CreatorRequestsPage />} />
           <Route path="approved-elections" element={<ApprovedElectionsPage />} />
           <Route path="activity-logs" element={<ActivityLogsPage />} />
+          <Route
+            path="finalized-voters"
+            element={<AdminFinalizedVotersPage />}
+          />
+          <Route
+            path="finalized-voters/:id"
+            element={<AdminFinalizationDetailPage />}
+          />
+          <Route path="secret-ids" element={<AdminSecretIdManagementPage />} />
+          <Route path="secret-ids/:id" element={<AdminSecretIdElectionPage />} />
         </Route>
 
         <Route
@@ -163,6 +186,22 @@ export default function AppRoutes() {
             <Route path="candidates/new" element={<CandidateFormPage />} />
             <Route path="candidates/:id" element={<CandidateDetailPage />} />
             <Route path="candidates/:id/edit" element={<CandidateFormPage />} />
+            <Route
+              path="finalized-voters"
+              element={<CreatorFinalizedVotersPage />}
+            />
+            <Route
+              path="finalized-voters/:id"
+              element={<CreatorFinalizationDetailPage />}
+            />
+            <Route
+              path="secret-ids"
+              element={<CreatorSecretIdManagementPage />}
+            />
+            <Route
+              path="secret-ids/:id"
+              element={<CreatorSecretIdElectionPage />}
+            />
           </Route>
         </Route>
 
@@ -183,6 +222,14 @@ export default function AppRoutes() {
             path="joined-elections"
             element={<MyJoinedElectionsPage />}
           />
+          <Route path="secret-ids" element={<MySecretIdsPage />} />
+          <Route path="vote" element={<VoterVoteListPage />} />
+          <Route path="vote/:electionId" element={<VoterElectionPollsPage />} />
+          <Route
+            path="vote/:electionId/:pollId"
+            element={<CastVotePage />}
+          />
+          <Route path="voting-history" element={<MyVotingHistoryPage />} />
         </Route>
 
         <Route

@@ -17,6 +17,8 @@ import { formatElectionDate } from '../../utils/electionFormatters';
 import { ROUTES } from '../../utils/constants';
 import { PUBLIC_ELECTION_STATUS } from '../../utils/publicElectionConstants';
 import { computeRegistrationStats } from '../../utils/voterRegistrationValidation';
+import { useRegistrationLockMonitor } from '../../hooks/useRegistrationLockMonitor';
+import RegistrationStatusBadge from '../../components/finalization/RegistrationStatusBadge';
 
 export default function PublicElectionDetailPage() {
   const { id } = useParams();
@@ -30,6 +32,8 @@ export default function PublicElectionDetailPage() {
     error,
     refreshRegistration,
   } = usePublicElectionDetail(id, user?.id);
+
+  useRegistrationLockMonitor(id, { enabled: Boolean(election) });
 
   if (loading) {
     return (
@@ -81,7 +85,12 @@ export default function PublicElectionDetailPage() {
                 </p>
                 <h1 className="mt-2 text-3xl font-bold">{election.title}</h1>
               </div>
-              <PublicStatusBadge status={election.publicStatus} />
+              <div className="flex flex-wrap items-center gap-2">
+                <PublicStatusBadge status={election.publicStatus} />
+                {election.registration_status && (
+                  <RegistrationStatusBadge status={election.registration_status} />
+                )}
+              </div>
             </div>
             <div className="mt-8">
               <CountdownTimer election={election} variant="card" />

@@ -17,7 +17,9 @@ export function useJoinElection({ onSuccess } = {}) {
           return { success: false, ...result };
         }
 
-        if (result.code === 'WAITLISTED') {
+        if (result.auto_locked && result.auto_lock_message) {
+          toast.success(result.auto_lock_message);
+        } else if (result.code === 'WAITLISTED') {
           toast.success(result.message);
         } else {
           toast.success(result.message ?? 'You are registered for this election.');

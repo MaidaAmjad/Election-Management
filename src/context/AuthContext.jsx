@@ -12,6 +12,7 @@ import {
   signOut as authSignOut,
   signUpWithEmail,
   resetPassword,
+  resetPasswordWithToken,
   updateUserPassword,
 } from '../services/authService';
 import { sendEmailOtp, verifyEmailOtp } from '../services/mfaService';
@@ -246,6 +247,10 @@ export function AuthProvider({ children }) {
     return updateUserPassword(password);
   }, []);
 
+  const completePasswordReset = useCallback(async (token, password) => {
+    await resetPasswordWithToken(token, password);
+  }, []);
+
   const sendMfaOtp = useCallback(async (email) => {
     await sendEmailOtp(email);
   }, []);
@@ -311,6 +316,7 @@ export function AuthProvider({ children }) {
       logout,
       sendPasswordReset,
       updatePassword,
+      completePasswordReset,
       sendMfaOtp,
       verifyMfa,
       setMfaEnabled,
@@ -333,6 +339,7 @@ export function AuthProvider({ children }) {
       logout,
       sendPasswordReset,
       updatePassword,
+      completePasswordReset,
       sendMfaOtp,
       verifyMfa,
       setMfaEnabled,

@@ -1,11 +1,14 @@
-import { supabase } from '../supabase/supabase';
+import {
+  sendMfaOtpEmail,
+  verifyMfaOtpEmail,
+} from './emailService';
 import {
   getOtpCooldownRemainingMs,
   markOtpSent,
 } from '../utils/otpCooldown';
+
 /**
- * Sends a one-time passcode to the user's email (Supabase Auth OTP).
- * Enforces a client-side cooldown to avoid hitting Supabase email rate limits.
+ * Sends a 6-digit MFA code via Resend (not Supabase Auth email).
  */
 export async function sendEmailOtp(email) {
   const trimmed = email.trim();
@@ -18,29 +21,13 @@ export async function sendEmailOtp(email) {
     );
   }
 
-  const { data, error } = await supabase.auth.signInWithOtp({
-    email: trimmed,
-    options: {
-      shouldCreateUser: false,
-    },
-  });
-
-  if (error) throw error;
-
+  await sendMfaOtpEmail(trimmed);
   markOtpSent(trimmed);
-  return data;
 }
 
 /**
- * Verifies the email OTP code from the user's inbox.
+ * Verifies MFA code sent by Resend.
  */
 export async function verifyEmailOtp(email, token) {
-  const { data, error } = await supabase.auth.verifyOtp({
-    email: email.trim(),
-    token: token.trim(),
-    type: 'email',
-  });
-
-  if (error) throw error;
-  return data;
+  await verifyMfaOtpEmail(email, token);
 }

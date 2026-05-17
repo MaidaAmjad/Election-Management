@@ -1,3 +1,7 @@
+/**
+ * @deprecated Deploy and use `send-email` instead.
+ * This handler forwards to the same Resend logic for backward compatibility.
+ */
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 
 const corsHeaders = {
@@ -12,64 +16,28 @@ serve(async (req) => {
   }
 
   try {
-    const { to, subject, html } = await req.json();
+    const body = await req.json();
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+    const anonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
 
-    if (!to || !subject || !html) {
-      return new Response(
-        JSON.stringify({ error: 'Missing to, subject, or html' }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        },
-      );
-    }
-
-    const resendKey = Deno.env.get('RESEND_API_KEY');
-    const fromEmail =
-      Deno.env.get('NOTIFICATION_FROM_EMAIL') ?? 'onboarding@resend.dev';
-
-    if (!resendKey) {
-      return new Response(
-        JSON.stringify({
-          error:
-            'RESEND_API_KEY is not configured. Set it in Supabase Edge Function secrets.',
-        }),
-        {
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        },
-      );
-    }
-
-    const res = await fetch('https://api.resend.com/emails', {
+    const res = await fetch(`${supabaseUrl}/functions/v1/send-email`, {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${resendKey}`,
+        Authorization: `Bearer ${serviceKey || anonKey}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        from: fromEmail,
-        to: [to],
-        subject,
-        html,
-      }),
+      body: JSON.stringify({ action: 'send', ...body }),
     });
 
-    const result = await res.json();
-
-    if (!res.ok) {
-      return new Response(JSON.stringify({ error: result.message ?? 'Send failed' }), {
-        status: res.status,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    return new Response(JSON.stringify({ success: true, id: result.id }), {
+    const text = await res.text();
+    return new Response(text, {
+      status: res.status,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (err) {
     return new Response(
-      JSON.stringify({ error: err.message ?? 'Unexpected error' }),
+      JSON.stringify({ error: err instanceof Error ? err.message : 'Error' }),
       {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

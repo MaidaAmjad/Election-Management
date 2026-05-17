@@ -5,18 +5,35 @@ import { fetchVoterRegistrationForElection } from './voterRegistrationService';
 export async function fetchVoteCountsForElectionIds(electionIds) {
   if (!electionIds.length) return {};
 
-  const { data, error } = await supabase
-    .from('election_votes')
-    .select('election_id')
+  const { data: polls, error: pollsError } = await supabase
+    .from('polls')
+    .select('id, election_id')
     .in('election_id', electionIds);
+
+  if (pollsError) throw pollsError;
+
+  const pollIds = (polls ?? []).map((p) => p.id);
+  if (!pollIds.length) return {};
+
+  const { data: counts, error } = await supabase
+    .from('poll_vote_counts')
+    .select('poll_id, vote_count')
+    .in('poll_id', pollIds);
 
   if (error) throw error;
 
-  const counts = {};
-  (data ?? []).forEach((row) => {
-    counts[row.election_id] = (counts[row.election_id] ?? 0) + 1;
+  const pollToElection = Object.fromEntries(
+    (polls ?? []).map((p) => [p.id, p.election_id]),
+  );
+
+  const result = {};
+  (counts ?? []).forEach((row) => {
+    const electionId = pollToElection[row.poll_id];
+    if (electionId) {
+      result[electionId] = (result[electionId] ?? 0) + Number(row.vote_count ?? 0);
+    }
   });
-  return counts;
+  return result;
 }
 
 async function fetchRegistrationCountsByElectionIds(electionIds) {
@@ -153,13 +170,8 @@ export async function fetchPublicElectionStats() {
 }
 
 export async function fetchElectionVoteCount(electionId) {
-  const { count, error } = await supabase
-    .from('election_votes')
-    .select('*', { count: 'exact', head: true })
-    .eq('election_id', electionId);
-
-  if (error) throw error;
-  return count ?? 0;
+  const counts = await fetchVoteCountsForElectionIds([electionId]);
+  return counts[electionId] ?? 0;
 }
 
 export {
@@ -201,10 +213,19 @@ export function subscribeToElectionVotes(electionId, onChange) {
     .on(
       'postgres_changes',
       {
-        event: '*',
+        event: 'INSERT',
         schema: 'public',
-        table: 'election_votes',
-        filter: `election_id=eq.${electionId}`,
+        table: 'votes',
+      },
+      () => onChange(),
+    )
+    .on(
+      'postgres_changes',
+      {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'elections',
+        filter: `id=eq.${electionId}`,
       },
       () => onChange(),
     )

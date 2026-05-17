@@ -1,17 +1,7 @@
-import { supabase } from '../supabase/supabase';
-
-async function invokeEmailFunction(payload) {
-  const { data, error } = await supabase.functions.invoke('send-notification-email', {
-    body: payload,
-  });
-
-  if (error) throw error;
-  if (data?.error) throw new Error(data.error);
-  return data;
-}
+import { sendTransactionalEmail } from './emailService';
 
 export async function sendCreatorApprovedEmail({ to, creatorName }) {
-  return invokeEmailFunction({
+  return sendTransactionalEmail({
     to,
     subject: 'Election Request Approved',
     html: `
@@ -22,8 +12,12 @@ export async function sendCreatorApprovedEmail({ to, creatorName }) {
   });
 }
 
-export async function sendCreatorRejectedEmail({ to, creatorName, rejectionReason }) {
-  return invokeEmailFunction({
+export async function sendCreatorRejectedEmail({
+  to,
+  creatorName,
+  rejectionReason,
+}) {
+  return sendTransactionalEmail({
     to,
     subject: 'Election Request Rejected',
     html: `
