@@ -7,14 +7,16 @@ import {
   HiOutlineUserGroup,
 } from 'react-icons/hi2';
 import CountdownTimer from '../../components/public/CountdownTimer';
-import ParticipateButton from '../../components/public/ParticipateButton';
 import PublicStatusBadge from '../../components/public/PublicStatusBadge';
+import ElectionRegistrationStats from '../../components/voters/ElectionRegistrationStats';
+import JoinElectionButton from '../../components/voters/JoinElectionButton';
 import Spinner from '../../components/ui/Spinner';
 import { useAuth } from '../../hooks/useAuth';
 import { usePublicElectionDetail } from '../../hooks/usePublicElectionDetail';
 import { formatElectionDate } from '../../utils/electionFormatters';
 import { ROUTES } from '../../utils/constants';
 import { PUBLIC_ELECTION_STATUS } from '../../utils/publicElectionConstants';
+import { computeRegistrationStats } from '../../utils/voterRegistrationValidation';
 
 export default function PublicElectionDetailPage() {
   const { id } = useParams();
@@ -22,11 +24,11 @@ export default function PublicElectionDetailPage() {
   const {
     election,
     voteCount,
-    isRegistered,
-    setIsRegistered,
+    registration,
+    activeRegistrationCount,
     loading,
     error,
-    refresh,
+    refreshRegistration,
   } = usePublicElectionDetail(id, user?.id);
 
   if (loading) {
@@ -41,7 +43,9 @@ export default function PublicElectionDetailPage() {
     return (
       <div className="mx-auto max-w-3xl px-4 py-20 text-center">
         <h1 className="text-2xl font-bold text-slate-900">Election not found</h1>
-        <p className="mt-2 text-slate-600">{error ?? 'This election may be unavailable.'}</p>
+        <p className="mt-2 text-slate-600">
+          {error ?? 'This election may be unavailable.'}
+        </p>
         <Link
           to={ROUTES.PUBLIC_ELECTIONS}
           className="mt-6 inline-flex items-center gap-2 text-primary-600 hover:text-primary-700"
@@ -55,6 +59,7 @@ export default function PublicElectionDetailPage() {
 
   const showLiveVotes =
     election.publicStatus === PUBLIC_ELECTION_STATUS.ACTIVE;
+  const stats = computeRegistrationStats(election, activeRegistrationCount);
 
   return (
     <div className="bg-slate-50 py-10">
@@ -91,6 +96,11 @@ export default function PublicElectionDetailPage() {
               </p>
             </section>
 
+            <ElectionRegistrationStats
+              election={election}
+              activeCount={activeRegistrationCount}
+            />
+
             <section className="grid gap-4 sm:grid-cols-2">
               <DetailItem
                 icon={HiOutlineUser}
@@ -110,7 +120,13 @@ export default function PublicElectionDetailPage() {
               <DetailItem
                 icon={HiOutlineUserGroup}
                 label="Registered voters"
-                value={`${election.registered_voters_count.toLocaleString()} / ${election.max_voters.toLocaleString()}`}
+                value={`${stats.totalRegistered.toLocaleString()} / ${stats.maxVoters.toLocaleString()}`}
+              />
+              <DetailItem
+                icon={HiOutlineUserGroup}
+                label="Available seats"
+                value={stats.availableSeats.toLocaleString()}
+                highlight={stats.availableSeats > 0}
               />
               <DetailItem
                 icon={HiOutlineCalendar}
@@ -131,13 +147,10 @@ export default function PublicElectionDetailPage() {
             </section>
 
             <div className="border-t border-slate-200 pt-6">
-              <ParticipateButton
+              <JoinElectionButton
                 election={election}
-                isRegistered={isRegistered}
-                onRegistered={() => {
-                  setIsRegistered(true);
-                  refresh();
-                }}
+                registration={registration}
+                onRegistrationChange={refreshRegistration}
               />
             </div>
           </div>
@@ -147,17 +160,30 @@ export default function PublicElectionDetailPage() {
   );
 }
 
-function DetailItem({ icon: Icon, label, value, className = '' }) {
+function DetailItem({
+  icon: Icon,
+  label,
+  value,
+  className = '',
+  highlight = false,
+}) {
   return (
     <div
       className={`flex gap-3 rounded-xl border border-slate-100 bg-slate-50 p-4 ${className}`}
     >
-      <Icon className="h-5 w-5 shrink-0 text-primary-600" aria-hidden="true" />
+      <Icon
+        className={`h-5 w-5 shrink-0 ${highlight ? 'text-emerald-600' : 'text-primary-600'}`}
+        aria-hidden="true"
+      />
       <div>
         <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
           {label}
         </p>
-        <p className="mt-1 font-medium text-slate-900">{value}</p>
+        <p
+          className={`mt-1 font-medium ${highlight ? 'text-emerald-700' : 'text-slate-900'}`}
+        >
+          {value}
+        </p>
       </div>
     </div>
   );

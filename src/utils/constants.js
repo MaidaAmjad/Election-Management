@@ -21,6 +21,7 @@ export const ROUTES = {
   CREATOR_PENDING: '/creator-dashboard/pending',
   CREATOR_REJECTED: '/creator-dashboard/rejected',
   VOTER_DASHBOARD: '/voter-dashboard',
+  VOTER_JOINED_ELECTIONS: '/voter-dashboard/joined-elections',
   UNAUTHORIZED: '/unauthorized',
 };
 

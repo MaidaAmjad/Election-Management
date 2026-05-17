@@ -1,5 +1,6 @@
 import { supabase } from '../supabase/supabase';
 import { getPublicElectionStatus } from '../utils/publicElectionStatus';
+import { fetchVoterRegistrationForElection } from './voterRegistrationService';
 
 export async function fetchVoteCountsForElectionIds(electionIds) {
   if (!electionIds.length) return {};
@@ -22,9 +23,10 @@ async function fetchRegistrationCountsByElectionIds(electionIds) {
   if (!electionIds.length) return {};
 
   const { data, error } = await supabase
-    .from('election_registrations')
+    .from('voter_registrations')
     .select('election_id')
-    .in('election_id', electionIds);
+    .in('election_id', electionIds)
+    .in('status', ['Registered', 'Approved']);
 
   if (error) throw error;
 
@@ -135,8 +137,9 @@ export async function fetchPublicElectionStats() {
   ).length;
 
   const { count: participants, error } = await supabase
-    .from('election_registrations')
-    .select('*', { count: 'exact', head: true });
+    .from('voter_registrations')
+    .select('*', { count: 'exact', head: true })
+    .in('status', ['Registered', 'Approved']);
 
   if (error) throw error;
 
@@ -159,27 +162,37 @@ export async function fetchElectionVoteCount(electionId) {
   return count ?? 0;
 }
 
+export {
+  fetchVoterRegistrationForElection as fetchUserRegistrationForElection,
+  joinElection as registerForElection,
+} from './voterRegistrationService';
+
 export async function isUserRegisteredForElection(electionId, userId) {
-  if (!userId) return false;
-
-  const { data, error } = await supabase
-    .from('election_registrations')
-    .select('id')
-    .eq('election_id', electionId)
-    .eq('voter_id', userId)
-    .maybeSingle();
-
-  if (error) throw error;
-  return Boolean(data);
+  const registration = await fetchVoterRegistrationForElection(
+    electionId,
+    userId,
+  );
+  return Boolean(registration);
 }
 
-export async function registerForElection(electionId, userId) {
-  const { error } = await supabase.from('election_registrations').insert({
-    election_id: electionId,
-    voter_id: userId,
-  });
+export function subscribeToVoterRegistrations(electionId, onChange) {
+  const channel = supabase
+    .channel(`voter-registrations-public-${electionId}`)
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'voter_registrations',
+        filter: `election_id=eq.${electionId}`,
+      },
+      () => onChange(),
+    )
+    .subscribe();
 
-  if (error) throw error;
+  return () => {
+    supabase.removeChannel(channel);
+  };
 }
 
 export function subscribeToElectionVotes(electionId, onChange) {

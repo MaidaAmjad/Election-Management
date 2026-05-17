@@ -34,6 +34,7 @@ import CandidateListPage from '../pages/candidates/CandidateListPage';
 import CandidateFormPage from '../pages/candidates/CandidateFormPage';
 import CandidateDetailPage from '../pages/candidates/CandidateDetailPage';
 import VoterDashboard from '../pages/VoterDashboard';
+import MyJoinedElectionsPage from '../pages/voters/MyJoinedElectionsPage';
 import Unauthorized from '../pages/Unauthorized';
 import NotFound from '../pages/NotFound';
 import { ROUTES, USER_ROLES } from '../utils/constants';
@@ -165,12 +166,24 @@ export default function AppRoutes() {
           </Route>
         </Route>
 
-        {dashboardRoute(
-          ROUTES.VOTER_DASHBOARD,
-          [USER_ROLES.VOTER],
-          'Voter Dashboard',
-          VoterDashboard,
-        )}
+        <Route
+          path={ROUTES.VOTER_DASHBOARD}
+          element={
+            <ProtectedRoute>
+              <MfaProtectedRoute>
+                <RoleProtectedRoute allowedRoles={[USER_ROLES.VOTER]}>
+                  <DashboardLayout title="Voter Dashboard" />
+                </RoleProtectedRoute>
+              </MfaProtectedRoute>
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<VoterDashboard />} />
+          <Route
+            path="joined-elections"
+            element={<MyJoinedElectionsPage />}
+          />
+        </Route>
 
         <Route
           path={ROUTES.SETTINGS}

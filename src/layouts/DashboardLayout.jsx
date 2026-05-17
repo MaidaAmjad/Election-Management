@@ -80,6 +80,46 @@ export default function DashboardLayout({ title }) {
         </nav>
       )}
 
+      {hasRole(role, [USER_ROLES.VOTER]) && (
+        <nav className="border-b border-slate-200 bg-white">
+          <div className="mx-auto flex max-w-7xl flex-wrap gap-1 px-4 sm:px-6 lg:px-8">
+            <NavLink
+              to={ROUTES.VOTER_DASHBOARD}
+              end
+              className={({ isActive }) =>
+                [
+                  'border-b-2 px-3 py-3 text-sm font-medium transition-colors',
+                  isActive
+                    ? 'border-primary-600 text-primary-700'
+                    : 'border-transparent text-slate-600 hover:border-slate-300 hover:text-slate-900',
+                ].join(' ')
+              }
+            >
+              Overview
+            </NavLink>
+            <NavLink
+              to={ROUTES.VOTER_JOINED_ELECTIONS}
+              className={({ isActive }) =>
+                [
+                  'border-b-2 px-3 py-3 text-sm font-medium transition-colors',
+                  isActive
+                    ? 'border-primary-600 text-primary-700'
+                    : 'border-transparent text-slate-600 hover:border-slate-300 hover:text-slate-900',
+                ].join(' ')
+              }
+            >
+              My joined elections
+            </NavLink>
+            <Link
+              to={ROUTES.PUBLIC_ELECTIONS}
+              className="border-b-2 border-transparent px-3 py-3 text-sm font-medium text-slate-600 hover:border-slate-300 hover:text-slate-900"
+            >
+              Browse elections
+            </Link>
+          </div>
+        </nav>
+      )}
+
       {hasRole(role, [USER_ROLES.ELECTION_CREATOR]) && (
         <nav className="border-b border-slate-200 bg-white">
           <div className="mx-auto flex max-w-7xl flex-wrap gap-1 px-4 sm:px-6 lg:px-8">
