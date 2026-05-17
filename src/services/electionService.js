@@ -58,54 +58,101 @@ function buildElectionPayload(form, creatorId, status) {
   };
 }
 
+async function syncPollOptions(polls, idMap) {
+  const realPolls = polls.filter((p) => !p.isStaging && p.title?.trim());
+
+  for (const poll of realPolls) {
+    const pollId = idMap.get(poll.id) ?? poll.id;
+    const optionIds = poll.optionCandidateIds ?? [];
+
+    const { error: deleteError } = await supabase
+      .from('poll_options')
+      .delete()
+      .eq('poll_id', pollId);
+
+    if (deleteError) {
+      if (deleteError.code !== '42P01' && !deleteError.message?.includes('poll_options')) {
+        throw deleteError;
+      }
+      continue;
+    }
+
+    if (optionIds.length === 0) continue;
+
+    const rows = optionIds.map((candidateId) => ({
+      poll_id: pollId,
+      candidate_id: candidateId,
+    }));
+
+    const { error: insertError } = await supabase.from('poll_options').insert(rows);
+    if (insertError) throw insertError;
+  }
+}
+
 async function syncPolls(electionId, polls) {
   const { data: existingPolls, error: fetchError } = await supabase
     .from('polls')
-    .select('id')
+    .select('id, is_staging')
     .eq('election_id', electionId);
 
   if (fetchError) throw fetchError;
 
+  const stagingPoll = (existingPolls ?? []).find((p) => p.is_staging);
+  const stagingId = stagingPoll?.id;
+
   const existingIds = new Set((existingPolls ?? []).map((p) => p.id));
   const incomingIds = new Set(
-    polls.filter((p) => !p.isNew && p.id).map((p) => p.id),
+    polls.filter((p) => p.id && (!p.isNew || existingIds.has(p.id))).map((p) => p.id),
   );
 
-  const toDelete = [...existingIds].filter((id) => !incomingIds.has(id));
+  if (stagingId) incomingIds.add(stagingId);
+
+  const toDelete = [...existingIds].filter((id) => !incomingIds.has(id) && id !== stagingId);
   if (toDelete.length > 0) {
-    const { error: deleteError } = await supabase
-      .from('polls')
-      .delete()
-      .in('id', toDelete);
+    const { error: deleteError } = await supabase.from('polls').delete().in('id', toDelete);
     if (deleteError) throw deleteError;
   }
 
+  const idMap = new Map();
+
   for (const poll of polls) {
+    if (poll.isStaging) {
+      if (poll.id) idMap.set(poll.id, poll.id);
+      continue;
+    }
     if (!poll.title?.trim()) continue;
 
     const pollPayload = {
       election_id: electionId,
       title: poll.title.trim(),
       description: poll.description?.trim() ?? '',
+      allow_multiple_answers: Boolean(poll.allowMultipleAnswers),
+      is_staging: false,
     };
 
-    if (poll.isNew || !existingIds.has(poll.id)) {
-      const { error: insertError } = await supabase
+    if (poll.isNew && !existingIds.has(poll.id)) {
+      const { data: inserted, error: insertError } = await supabase
         .from('polls')
-        .insert(pollPayload);
+        .insert(pollPayload)
+        .select('id')
+        .single();
       if (insertError) throw insertError;
+      idMap.set(poll.id, inserted.id);
     } else {
       const { error: updateError } = await supabase
         .from('polls')
         .update({
           title: pollPayload.title,
           description: pollPayload.description,
+          allow_multiple_answers: pollPayload.allow_multiple_answers,
         })
         .eq('id', poll.id);
       if (updateError) throw updateError;
+      idMap.set(poll.id, poll.id);
     }
   }
 
+  await syncPollOptions(polls, idMap);
   return loadPollsWithCandidates(electionId);
 }
 
@@ -121,7 +168,8 @@ export async function ensureStagingPoll(electionId) {
     .insert({
       election_id: electionId,
       title: 'Ballot 1',
-      description: 'Primary ballot — assign additional polls in the next step.',
+      description: 'Primary ballot — candidate pool for this election.',
+      is_staging: true,
     })
     .select()
     .single();
@@ -130,53 +178,29 @@ export async function ensureStagingPoll(electionId) {
   return { ...data, candidates: [] };
 }
 
-async function copyStagingCandidatesToEmptyPolls(election, creatorId) {
-  const polls = election.polls ?? [];
-  const templates = polls[0]?.candidates ?? [];
-  if (!templates.length) return;
-
-  for (const poll of polls.slice(1)) {
-    if (poll.candidates?.length) continue;
-    const rows = templates.map((template) => ({
-      id: crypto.randomUUID(),
-      election_id: election.id,
-      poll_id: poll.id,
-      creator_id: creatorId,
-      name: template.name?.trim() ?? '',
-      designation: template.designation?.trim() ?? '',
-      manifesto: template.manifesto?.trim() ?? '',
-      photo_url: template.photo_url || null,
-    }));
-    const { error } = await supabase.from('candidates').insert(rows);
-    if (error) throw error;
-  }
-}
-
 export async function assertElectionReadyToPublish(electionId, creatorId) {
-  let election = await fetchElectionById(electionId, creatorId);
-  let polls = election.polls ?? [];
+  const election = await fetchElectionById(electionId, creatorId);
+  const polls = election.polls ?? [];
+  const staging = polls.find((p) => p.isStaging) ?? polls[0];
+  const displayPolls = polls.filter((p) => !p.isStaging);
 
-  if (!polls.length) {
-    throw new Error('Add at least one poll before publishing.');
-  }
-
-  if (polls.length > 1 && polls[0]?.candidates?.length) {
-    await copyStagingCandidatesToEmptyPolls(election, creatorId);
-    election = await fetchElectionById(electionId, creatorId);
-    polls = election.polls ?? [];
-  }
-
-  if (!(polls[0]?.candidates?.length)) {
+  if (!(staging?.candidates?.length)) {
     throw new Error('Add at least one candidate before publishing.');
   }
 
-  for (const poll of polls) {
+  if (!displayPolls.length) {
+    throw new Error('Add at least one poll before publishing.');
+  }
+
+  for (const poll of displayPolls) {
     if (!poll.title?.trim()) {
-      throw new Error('Every poll must have a title before publishing.');
+      throw new Error('Every poll must have a question before publishing.');
     }
-    if (!poll.candidates?.length) {
+    const optionCount =
+      poll.optionCandidateIds?.length ?? poll.candidates?.length ?? 0;
+    if (optionCount < 2) {
       throw new Error(
-        `Add at least one candidate to the poll "${poll.title}" before publishing.`,
+        `Select at least two options for the poll "${poll.title}" before publishing.`,
       );
     }
   }

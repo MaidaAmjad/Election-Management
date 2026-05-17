@@ -1,10 +1,13 @@
 import { ELECTION_CATEGORIES } from './electionConstants';
 
-export const emptyPoll = () => ({
+export const emptyPoll = ({ isStaging = false } = {}) => ({
   id: crypto.randomUUID(),
   title: '',
   description: '',
+  allowMultipleAnswers: false,
+  optionCandidateIds: [],
   isNew: true,
+  isStaging,
   candidates: [],
 });
 
@@ -103,13 +106,15 @@ export function validateElectionForm(form, { isPublish = false, includePolls = t
     return errors;
   }
 
-  (form.polls ?? []).forEach((poll, index) => {
+  const displayPolls = (form.polls ?? []).filter((p) => !p.isStaging);
+  displayPolls.forEach((poll, index) => {
     const pollFieldErrors = {};
     if (!poll.title?.trim()) {
-      pollFieldErrors.title = 'Poll title is required.';
+      pollFieldErrors.title = 'Question is required.';
     }
-    if (!poll.description?.trim()) {
-      pollFieldErrors.description = 'Poll description is required.';
+    const optionCount = poll.optionCandidateIds?.length ?? 0;
+    if (optionCount < 2) {
+      pollFieldErrors.options = 'Select at least two candidates as options.';
     }
     if (Object.keys(pollFieldErrors).length > 0) {
       pollErrors[index] = pollFieldErrors;
@@ -120,7 +125,7 @@ export function validateElectionForm(form, { isPublish = false, includePolls = t
     errors.polls = pollErrors;
   }
 
-  if (isPublish && (!form.polls || form.polls.length === 0)) {
+  if (isPublish && displayPolls.length === 0) {
     errors.pollsGeneral = 'Add at least one poll before publishing.';
   }
 
@@ -129,7 +134,7 @@ export function validateElectionForm(form, { isPublish = false, includePolls = t
 
 /** Step 2: at least one saved candidate on the staging poll */
 export function validateStagingCandidates(polls) {
-  const staging = polls?.[0];
+  const staging = polls?.find((p) => p.isStaging) ?? polls?.[0];
   const count = staging?.candidates?.length ?? 0;
   if (count < 1) {
     return { candidatesGeneral: 'Add at least one candidate before continuing.' };
@@ -139,15 +144,16 @@ export function validateStagingCandidates(polls) {
 
 export function validateCandidatesForPublish(polls) {
   const errors = {};
-  if (!polls?.length) {
+  const displayPolls = (polls ?? []).filter((p) => !p.isStaging);
+  if (!displayPolls.length) {
     return { pollsGeneral: 'Add at least one poll before publishing.' };
   }
 
-  polls.forEach((poll, index) => {
-    const count = poll.candidates?.length ?? 0;
+  displayPolls.forEach((poll, index) => {
+    const count = poll.optionCandidateIds?.length ?? poll.candidates?.length ?? 0;
     if (!poll.title?.trim()) return;
-    if (count < 1) {
-      errors[index] = 'Add at least one candidate to this poll.';
+    if (count < 2) {
+      errors[index] = 'Select at least two options for this poll.';
     }
   });
 
@@ -186,7 +192,12 @@ export function electionToForm(election, polls = []) {
             id: p.id,
             title: p.title ?? '',
             description: p.description ?? '',
+            allowMultipleAnswers: Boolean(
+              p.allowMultipleAnswers ?? p.allow_multiple_answers,
+            ),
+            optionCandidateIds: p.optionCandidateIds ?? (p.candidates ?? []).map((c) => c.id),
             isNew: false,
+            isStaging: Boolean(p.isStaging ?? p.is_staging),
             candidates: (p.candidates ?? []).map((c) => ({
               id: c.id,
               name: c.name ?? '',

@@ -1,5 +1,5 @@
-import PollsManager from './PollsManager';
 import PollCandidateEditor from './PollCandidateEditor';
+import PollCreatorStep from './PollCreatorStep';
 
 export default function PollCandidatesStep({
   electionTitle,
@@ -53,8 +53,14 @@ export default function PollCandidatesStep({
   );
 }
 
-export function PollsOnlyStep({ polls, onChange, errors, readOnly }) {
+export function PollsOnlyStep({ polls, poolCandidates, onChange, errors, readOnly }) {
   return (
-    <PollsManager polls={polls} onChange={onChange} errors={errors} readOnly={readOnly} />
+    <PollCreatorStep
+      polls={polls}
+      poolCandidates={poolCandidates}
+      onChange={onChange}
+      errors={errors}
+      readOnly={readOnly}
+    />
   );
 }

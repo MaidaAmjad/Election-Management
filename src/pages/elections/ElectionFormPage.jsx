@@ -23,8 +23,10 @@ import ElectionApprovalStatusBadge from '../../components/elections/ElectionAppr
 import { ROUTES } from '../../utils/constants';
 import { ELECTION_STATUS } from '../../utils/electionConstants';
 import { isElectionEditable } from '../../utils/electionStatus';
+import { getStagingPoll } from '../../utils/pollCandidatesLoader';
 import {
   emptyElectionForm,
+  emptyPoll,
   electionToForm,
   hasValidationErrors,
   validateElectionForm,
@@ -49,7 +51,8 @@ export default function ElectionFormPage() {
   const [electionStatus, setElectionStatus] = useState(ELECTION_STATUS.DRAFT);
   const [approvalStatus, setApprovalStatus] = useState(null);
 
-  const stagingPoll = form.polls?.[0] ?? null;
+  const stagingPoll = getStagingPoll(form.polls ?? []);
+  const candidatePool = stagingPoll?.candidates ?? [];
 
   useEffect(() => {
     if (!isEdit || !user?.id) return undefined;
@@ -168,7 +171,7 @@ export default function ElectionFormPage() {
   }
 
   async function goToStep3() {
-    const candidateErrors = validateStagingCandidates(form.polls);
+    const candidateErrors = validateStagingCandidates(form.polls ?? []);
     if (Object.keys(candidateErrors).length > 0) {
       setErrors((prev) => ({ ...prev, ...candidateErrors }));
       toast.error('Add at least one candidate before continuing.');
@@ -182,7 +185,18 @@ export default function ElectionFormPage() {
 
     setSaving(true);
     try {
-      await refreshFormFromServer();
+      const full = await refreshFormFromServer();
+      const loaded = full.polls ?? [];
+      const staging = getStagingPoll(loaded);
+      const hasDisplayPoll = loaded.some((p) => !p.isStaging);
+      setForm((prev) => {
+        const base = electionToForm(full, loaded);
+        if (hasDisplayPoll) return base;
+        return {
+          ...base,
+          polls: [...(staging ? [staging] : []), emptyPoll()],
+        };
+      });
       setErrors({});
       setStep(WIZARD_STEPS.POLLS);
     } catch (err) {
@@ -278,6 +292,7 @@ export default function ElectionFormPage() {
       {step === WIZARD_STEPS.POLLS && (
         <PollsOnlyStep
           polls={form.polls}
+          poolCandidates={candidatePool}
           onChange={(polls) => setForm((prev) => ({ ...prev, polls }))}
           errors={errors}
         />

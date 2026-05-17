@@ -6,6 +6,11 @@ import {
   uploadCandidatePhoto,
 } from './candidateStorageService';
 
+/** Disambiguates embed when elections.winner_id also references candidates. */
+const ELECTION_EMBED = 'elections!candidates_election_id_fkey';
+/** Disambiguates embed when poll_options also links candidates and polls. */
+const POLL_EMBED = 'polls!candidates_poll_id_fkey';
+
 function mapCandidate(row) {
   if (!row) return null;
   const election = row.elections ?? row.election;
@@ -24,8 +29,8 @@ export async function fetchCandidatesByElection(electionId, creatorId) {
     .select(
       `
       *,
-      elections!inner ( id, title, status, creator_id ),
-      polls ( id, title )
+      ${ELECTION_EMBED}!inner ( id, title, status, creator_id ),
+      ${POLL_EMBED} ( id, title )
     `,
     )
     .eq('election_id', electionId)
@@ -46,8 +51,8 @@ export async function fetchCandidatesByPoll(pollId, creatorId) {
     .select(
       `
       *,
-      elections!inner ( id, title, status, creator_id ),
-      polls!inner ( id, title )
+      ${ELECTION_EMBED}!inner ( id, title, status, creator_id ),
+      ${POLL_EMBED}!inner ( id, title )
     `,
     )
     .eq('poll_id', pollId)
@@ -68,13 +73,13 @@ export async function fetchCandidateById(candidateId, creatorId) {
     .select(
       `
       *,
-      elections!inner (
+      ${ELECTION_EMBED}!inner (
         id,
         title,
         status,
         creator_id
       ),
-      polls!inner ( id, title )
+      ${POLL_EMBED}!inner ( id, title )
     `,
     )
     .eq('id', candidateId)
@@ -117,8 +122,8 @@ export async function createCandidate(
     .select(
       `
       *,
-      elections ( id, title, status ),
-      polls ( id, title )
+      ${ELECTION_EMBED} ( id, title, status ),
+      ${POLL_EMBED} ( id, title )
     `,
     )
     .single();
@@ -174,8 +179,8 @@ export async function updateCandidate(
     .select(
       `
       *,
-      elections ( id, title, status ),
-      polls ( id, title )
+      ${ELECTION_EMBED} ( id, title, status ),
+      ${POLL_EMBED} ( id, title )
     `,
     )
     .single();

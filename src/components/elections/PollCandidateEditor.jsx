@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { HiOutlinePencilSquare, HiOutlinePlus, HiOutlineTrash } from 'react-icons/hi2';
 import Input from '../ui/Input';
@@ -38,14 +38,31 @@ export default function PollCandidateEditor({
   const [uploadProgress, setUploadProgress] = useState(0);
   const [deletingId, setDeletingId] = useState(null);
 
-  function resetForm() {
-    setAdding(false);
-    setEditingId(null);
+  function resetFields() {
     setFields(emptyFields());
     setPhotoFile(null);
     setErrors({});
     setUploadProgress(0);
   }
+
+  function resetForm() {
+    setAdding(false);
+    setEditingId(null);
+    resetFields();
+  }
+
+  function startAddAnother() {
+    setEditingId(null);
+    resetFields();
+    setAdding(true);
+  }
+
+  useEffect(() => {
+    if (readOnly || editingId) return;
+    if (candidates.length === 0) {
+      setAdding(true);
+    }
+  }, [readOnly, candidates.length, editingId]);
 
   function startEdit(candidate) {
     setAdding(false);
@@ -90,12 +107,15 @@ export default function PollCandidateEditor({
           candidates.map((c) => (c.id === editingId ? updated : c)),
         );
         toast.success('Candidate updated.');
+        resetForm();
       } else {
         const created = await createCandidate(creatorId, form, photoFile, setUploadProgress);
         onCandidatesChange([...candidates, created]);
-        toast.success('Candidate added.');
+        resetFields();
+        setEditingId(null);
+        setAdding(true);
+        toast.success('Candidate added. You can add another below.');
       }
-      resetForm();
     } catch (err) {
       toast.error(err.message ?? 'Failed to save candidate.');
     } finally {
@@ -119,13 +139,31 @@ export default function PollCandidateEditor({
   }
 
   const showForm = adding || editingId;
+  const addLabel =
+    candidates.length === 0 ? 'Add candidate' : 'Add another candidate';
 
   return (
     <div className="space-y-4">
+      {!readOnly && (
+        <div className="flex flex-col gap-3 border-b border-slate-100 pb-4 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-slate-600">
+            {candidates.length === 0
+              ? 'Add at least one candidate. You can register as many as you need.'
+              : `${candidates.length} candidate${candidates.length === 1 ? '' : 's'} registered.`}
+          </p>
+          {!showForm && (
+            <Button type="button" size="sm" className="shrink-0 gap-2" onClick={startAddAnother}>
+              <HiOutlinePlus className="h-4 w-4" aria-hidden="true" />
+              {addLabel}
+            </Button>
+          )}
+        </div>
+      )}
+
       <ul className="space-y-2">
         {candidates.length === 0 && !showForm && (
           <li className="rounded-lg border border-dashed border-slate-300 px-4 py-6 text-center text-sm text-slate-500">
-            No candidates for this poll yet.
+            No candidates yet. Use &quot;{addLabel}&quot; above to get started.
           </li>
         )}
         {candidates.map((candidate) => (
@@ -166,22 +204,6 @@ export default function PollCandidateEditor({
           </li>
         ))}
       </ul>
-
-      {!readOnly && !showForm && (
-        <Button
-          type="button"
-          variant="secondary"
-          size="sm"
-          className="gap-2"
-          onClick={() => {
-            resetForm();
-            setAdding(true);
-          }}
-        >
-          <HiOutlinePlus className="h-4 w-4" />
-          Add candidate
-        </Button>
-      )}
 
       {showForm && !readOnly && (
         <div className="rounded-lg border border-primary-200 bg-primary-50/30 p-4 space-y-4">
@@ -235,13 +257,26 @@ export default function PollCandidateEditor({
           />
           <div className="flex flex-wrap gap-2">
             <Button type="button" onClick={handleSave} isLoading={submitting}>
-              {editingId ? 'Save changes' : 'Add candidate'}
+              {editingId ? 'Save changes' : 'Save candidate'}
             </Button>
             <Button type="button" variant="secondary" onClick={resetForm} disabled={submitting}>
-              Cancel
+              {candidates.length === 0 ? 'Cancel' : 'Done adding'}
             </Button>
           </div>
         </div>
+      )}
+
+      {!readOnly && !showForm && candidates.length > 0 && (
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          className="gap-2"
+          onClick={startAddAnother}
+        >
+          <HiOutlinePlus className="h-4 w-4" aria-hidden="true" />
+          Add another candidate
+        </Button>
       )}
     </div>
   );

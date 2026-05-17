@@ -26,9 +26,10 @@ export default function ElectionCandidatesStep({
       <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
         <h3 className="text-lg font-semibold text-slate-900">Add candidates</h3>
         <p className="mt-1 text-sm text-slate-500">
-          Register candidates for{' '}
-          <strong>{electionTitle || 'your election'}</strong>. In the next step you
-          will create polls and assign how voting is organized.
+          Register one or more candidates for{' '}
+          <strong>{electionTitle || 'your election'}</strong>. Use{' '}
+          <strong>Add another candidate</strong> after each save to keep adding. In the
+          next step you will create polls.
         </p>
         {candidateErrors.candidatesGeneral && (
           <p className="mt-3 text-sm text-red-600" role="alert">
