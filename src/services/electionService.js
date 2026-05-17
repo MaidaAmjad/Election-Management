@@ -1,4 +1,6 @@
 import { supabase } from '../supabase/supabase';
+import { logAudit } from './auditLogService';
+import { AUDIT_ACTIONS, AUDIT_MODULES } from '../utils/auditConstants';
 import { ELECTION_STATUS } from '../utils/electionConstants';
 import { fromDatetimeLocalValue } from '../utils/electionValidation';
 import { getEffectiveStatus } from '../utils/electionStatus';
@@ -114,6 +116,13 @@ export async function createElectionDraft(creatorId, form) {
   if (error) throw error;
 
   await syncPolls(data.id, form.polls ?? []);
+  await logAudit({
+    actionType: AUDIT_ACTIONS.ELECTION_CREATED,
+    moduleName: AUDIT_MODULES.ELECTION,
+    description: `Draft election created: ${form.title}`,
+    electionId: data.id,
+    userId: creatorId,
+  }).catch(() => {});
   return fetchElectionById(data.id, creatorId);
 }
 
@@ -128,6 +137,13 @@ export async function updateElectionDraft(electionId, creatorId, form) {
   if (error) throw error;
 
   await syncPolls(electionId, form.polls ?? []);
+  await logAudit({
+    actionType: AUDIT_ACTIONS.ELECTION_UPDATED,
+    moduleName: AUDIT_MODULES.ELECTION,
+    description: `Election draft updated: ${form.title}`,
+    electionId,
+    userId: creatorId,
+  }).catch(() => {});
   return fetchElectionById(electionId, creatorId);
 }
 
@@ -142,6 +158,17 @@ export async function publishElection(electionId, creatorId, form) {
   if (error) throw error;
 
   await syncPolls(electionId, form.polls ?? []);
+  await logAudit({
+    actionType: AUDIT_ACTIONS.ELECTION_PUBLISHED,
+    moduleName: AUDIT_MODULES.ELECTION,
+    description: `Election published: ${form.title}`,
+    electionId,
+    userId: creatorId,
+  }).catch(() => {});
+
+  const { scheduleElectionEmailReminders } = await import('./notificationService');
+  await scheduleElectionEmailReminders(electionId).catch(() => {});
+
   return fetchElectionById(electionId, creatorId);
 }
 
@@ -154,4 +181,12 @@ export async function deleteElectionDraft(electionId, creatorId) {
     .eq('status', ELECTION_STATUS.DRAFT);
 
   if (error) throw error;
+
+  await logAudit({
+    actionType: AUDIT_ACTIONS.ELECTION_DELETED,
+    moduleName: AUDIT_MODULES.ELECTION,
+    description: `Draft election deleted`,
+    electionId,
+    userId: creatorId,
+  }).catch(() => {});
 }

@@ -1,10 +1,8 @@
 import { supabase } from '../supabase/supabase';
 import { USER_ROLES } from '../utils/constants';
-import {
-  CREATOR_REQUEST_STATUS,
-  ACTIVITY_ACTIONS,
-} from '../utils/adminConstants';
-import { logActivity } from './activityLogService';
+import { CREATOR_REQUEST_STATUS } from '../utils/adminConstants';
+import { logAudit } from './auditLogService';
+import { AUDIT_ACTIONS, AUDIT_MODULES } from '../utils/auditConstants';
 import {
   sendCreatorApprovedEmail,
   sendCreatorRejectedEmail,
@@ -71,9 +69,10 @@ export async function createCreatorRequest({
 
   if (error) throw error;
 
-  await logActivity({
+  await logAudit({
     userId,
-    action: ACTIVITY_ACTIONS.REQUEST_SUBMITTED,
+    actionType: AUDIT_ACTIONS.REQUEST_SUBMITTED,
+    moduleName: AUDIT_MODULES.APPROVAL,
     description: `Election creator request submitted for ${organization.trim()}.`,
   });
 
@@ -152,14 +151,16 @@ export async function approveCreatorRequest(requestId, adminUserId) {
 
   await updateProfileRole(request.user_id, USER_ROLES.ELECTION_CREATOR);
 
-  await logActivity({
+  await logAudit({
     userId: adminUserId,
-    action: ACTIVITY_ACTIONS.REQUEST_APPROVED,
-    description: `Approved election creator request ${requestId} for ${request.creator_name}.`,
+    actionType: AUDIT_ACTIONS.REQUEST_APPROVED,
+    moduleName: AUDIT_MODULES.APPROVAL,
+    description: `Approved election creator request for ${request.creator_name}.`,
   });
 
   try {
     await sendCreatorApprovedEmail({
+      userId: request.user_id,
       to: request.email,
       creatorName: request.creator_name,
     });
@@ -192,14 +193,16 @@ export async function rejectCreatorRequest(requestId, adminUserId, rejectionReas
 
   if (error) throw error;
 
-  await logActivity({
+  await logAudit({
     userId: adminUserId,
-    action: ACTIVITY_ACTIONS.REQUEST_REJECTED,
-    description: `Rejected election creator request ${requestId} for ${request.creator_name}. Reason: ${reason}`,
+    actionType: AUDIT_ACTIONS.REQUEST_REJECTED,
+    moduleName: AUDIT_MODULES.APPROVAL,
+    description: `Rejected election creator request for ${request.creator_name}. Reason: ${reason}`,
   });
 
   try {
     await sendCreatorRejectedEmail({
+      userId: request.user_id,
       to: request.email,
       creatorName: request.creator_name,
       rejectionReason: reason,

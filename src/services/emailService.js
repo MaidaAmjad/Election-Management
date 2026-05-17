@@ -75,3 +75,19 @@ export async function confirmSignupEmail(userId) {
     userId,
   });
 }
+
+export async function sendSignupVerificationEmail({ email, userId, fullName }) {
+  return invokeEmailService({
+    action: 'signup_verification_send',
+    email,
+    userId,
+    fullName,
+  });
+}
+
+export async function verifySignupEmailToken(token) {
+  return invokeEmailService({
+    action: 'signup_verification_verify',
+    token,
+  });
+}

@@ -48,6 +48,17 @@ import VoterVoteListPage from '../pages/voting/VoterVoteListPage';
 import VoterElectionPollsPage from '../pages/voting/VoterElectionPollsPage';
 import CastVotePage from '../pages/voting/CastVotePage';
 import MyVotingHistoryPage from '../pages/voting/MyVotingHistoryPage';
+import AdminResultsHistoryPage from '../pages/results/AdminResultsHistoryPage';
+import AdminLiveResultsPage from '../pages/results/AdminLiveResultsPage';
+import CreatorResultsHistoryPage from '../pages/results/CreatorResultsHistoryPage';
+import CreatorLiveResultsPage from '../pages/results/CreatorLiveResultsPage';
+import VoterResultsHistoryPage from '../pages/results/VoterResultsHistoryPage';
+import VoterLiveResultsPage from '../pages/results/VoterLiveResultsPage';
+import AdminAuditPage from '../pages/audit/AdminAuditPage';
+import CreatorAuditPage from '../pages/audit/CreatorAuditPage';
+import VoterAuditPage from '../pages/audit/VoterAuditPage';
+import NotificationCenterPage from '../pages/notifications/NotificationCenterPage';
+import VerifyEmail from '../pages/VerifyEmail';
 import Unauthorized from '../pages/Unauthorized';
 import NotFound from '../pages/NotFound';
 import { ROUTES, USER_ROLES } from '../utils/constants';
@@ -121,6 +132,7 @@ export default function AppRoutes() {
             }
           />
           <Route path={ROUTES.RESET_PASSWORD} element={<ResetPassword />} />
+          <Route path={ROUTES.VERIFY_EMAIL} element={<VerifyEmail />} />
           <Route
             path={ROUTES.VERIFY_MFA}
             element={
@@ -157,6 +169,10 @@ export default function AppRoutes() {
           />
           <Route path="secret-ids" element={<AdminSecretIdManagementPage />} />
           <Route path="secret-ids/:id" element={<AdminSecretIdElectionPage />} />
+          <Route path="results" element={<AdminResultsHistoryPage />} />
+          <Route path="results/:id" element={<AdminLiveResultsPage />} />
+          <Route path="audit" element={<AdminAuditPage />} />
+          <Route path="notifications" element={<NotificationCenterPage />} />
         </Route>
 
         <Route
@@ -202,6 +218,10 @@ export default function AppRoutes() {
               path="secret-ids/:id"
               element={<CreatorSecretIdElectionPage />}
             />
+            <Route path="results" element={<CreatorResultsHistoryPage />} />
+            <Route path="results/:id" element={<CreatorLiveResultsPage />} />
+            <Route path="audit" element={<CreatorAuditPage />} />
+            <Route path="notifications" element={<NotificationCenterPage />} />
           </Route>
         </Route>
 
@@ -230,6 +250,10 @@ export default function AppRoutes() {
             element={<CastVotePage />}
           />
           <Route path="voting-history" element={<MyVotingHistoryPage />} />
+          <Route path="results" element={<VoterResultsHistoryPage />} />
+          <Route path="results/:id" element={<VoterLiveResultsPage />} />
+          <Route path="audit" element={<VoterAuditPage />} />
+          <Route path="notifications" element={<NotificationCenterPage />} />
         </Route>
 
         <Route

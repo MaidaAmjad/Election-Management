@@ -22,8 +22,8 @@ import {
 } from '../services/profileService';
 import { resolveRole, normalizeRole } from '../utils/roleHelpers';
 import { USER_ROLES } from '../utils/constants';
-import { logActivity } from '../services/activityLogService';
-import { ACTIVITY_ACTIONS } from '../utils/adminConstants';
+import { logAudit } from '../services/auditLogService';
+import { AUDIT_ACTIONS, AUDIT_MODULES } from '../utils/auditConstants';
 import {
   clearMfaVerified,
   isMfaVerified,
@@ -155,18 +155,16 @@ export function AuthProvider({ children }) {
 
       const userProfile = newUser ? await loadProfile(newUser) : null;
 
-      if (
-        userProfile &&
-        normalizeRole(userProfile.role) === USER_ROLES.SUPER_ADMIN
-      ) {
+      if (newUser) {
         try {
-          await logActivity({
+          await logAudit({
             userId: newUser.id,
-            action: ACTIVITY_ACTIONS.ADMIN_LOGIN,
-            description: 'Super Admin signed in to the platform.',
+            actionType: AUDIT_ACTIONS.USER_LOGIN,
+            moduleName: AUDIT_MODULES.AUTHENTICATION,
+            description: `${userProfile?.role ?? 'User'} signed in.`,
           });
         } catch (logErr) {
-          console.error('[Auth] Admin login log failed:', logErr?.message);
+          console.error('[Auth] Login audit failed:', logErr?.message);
         }
       }
 
@@ -215,6 +213,17 @@ export function AuthProvider({ children }) {
 
       const userProfile = await loadProfile(newUser);
 
+      try {
+        await logAudit({
+          userId: newUser.id,
+          actionType: AUDIT_ACTIONS.USER_SIGNUP,
+          moduleName: AUDIT_MODULES.AUTHENTICATION,
+          description: `New account registered: ${credentials.email}`,
+        });
+      } catch (logErr) {
+        console.error('[Auth] Signup audit failed:', logErr?.message);
+      }
+
       return {
         session: newSession,
         user: newUser,
@@ -227,6 +236,18 @@ export function AuthProvider({ children }) {
 
   const logout = useCallback(async () => {
     const userId = user?.id;
+    if (userId) {
+      try {
+        await logAudit({
+          userId,
+          actionType: AUDIT_ACTIONS.USER_LOGOUT,
+          moduleName: AUDIT_MODULES.AUTHENTICATION,
+          description: 'User signed out.',
+        });
+      } catch (logErr) {
+        console.error('[Auth] Logout audit failed:', logErr?.message);
+      }
+    }
     try {
       await authSignOut();
     } finally {

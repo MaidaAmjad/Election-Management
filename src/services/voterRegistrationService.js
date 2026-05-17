@@ -1,4 +1,6 @@
 import { supabase } from '../supabase/supabase';
+import { logAudit } from './auditLogService';
+import { AUDIT_ACTIONS, AUDIT_MODULES } from '../utils/auditConstants';
 import { VOTER_REGISTRATION_STATUS } from '../utils/voterRegistrationConstants';
 
 const ACTIVE_STATUSES = [
@@ -134,6 +136,20 @@ export async function joinElection(electionId) {
   });
 
   if (error) throw error;
+
+  if (data?.success) {
+    const action =
+      data?.status === 'Waitlisted'
+        ? AUDIT_ACTIONS.WAITLIST_ADDED
+        : AUDIT_ACTIONS.VOTER_JOINED;
+    await logAudit({
+      actionType: action,
+      moduleName: AUDIT_MODULES.REGISTRATION,
+      description: data?.message ?? 'Voter registration updated.',
+      electionId,
+    }).catch(() => {});
+  }
+
   return data;
 }
 

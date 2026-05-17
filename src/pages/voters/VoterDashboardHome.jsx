@@ -56,6 +56,13 @@ export default function VoterDashboardHome() {
             Voting history
             <HiOutlineArrowRight className="h-4 w-4" />
           </Link>
+          <Link
+            to={ROUTES.VOTER_RESULTS}
+            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          >
+            Election results
+            <HiOutlineArrowRight className="h-4 w-4" />
+          </Link>
         </div>
       </section>
 

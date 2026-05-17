@@ -8,10 +8,13 @@ import { useAuth } from '../hooks/useAuth';
 import { useLogout } from '../hooks/useLogout';
 import { getRoleLabel, hasRole } from '../utils/roleHelpers';
 import Button from '../components/ui/Button';
+import NotificationBell from '../components/notifications/NotificationBell';
+import { useScheduledEmailProcessor } from '../hooks/useScheduledEmailProcessor';
 
 export default function DashboardLayout({ title }) {
   const { profile, role, user } = useAuth();
   const handleLogout = useLogout();
+  useScheduledEmailProcessor(Boolean(user?.id));
   const displayName = profile?.full_name ?? user?.email ?? 'User';
 
   return (
@@ -26,6 +29,7 @@ export default function DashboardLayout({ title }) {
           </div>
 
           <div className="flex items-center gap-3 sm:gap-4">
+            <NotificationBell />
             <p className="hidden text-sm text-slate-600 sm:block">
               {displayName}
             </p>
@@ -71,10 +75,10 @@ export default function DashboardLayout({ title }) {
               Approved elections
             </Link>
             <Link
-              to={ROUTES.ADMIN_ACTIVITY_LOGS}
+              to={ROUTES.ADMIN_AUDIT}
               className="border-b-2 border-transparent px-3 py-3 text-sm font-medium text-slate-600 hover:border-slate-300 hover:text-slate-900"
             >
-              Activity logs
+              Audit & transparency
             </Link>
             <Link
               to={ROUTES.ADMIN_FINALIZED_VOTERS}
@@ -87,6 +91,18 @@ export default function DashboardLayout({ title }) {
               className="border-b-2 border-transparent px-3 py-3 text-sm font-medium text-slate-600 hover:border-slate-300 hover:text-slate-900"
             >
               Secret IDs
+            </Link>
+            <Link
+              to={ROUTES.ADMIN_RESULTS}
+              className="border-b-2 border-transparent px-3 py-3 text-sm font-medium text-slate-600 hover:border-slate-300 hover:text-slate-900"
+            >
+              Results
+            </Link>
+            <Link
+              to={ROUTES.ADMIN_NOTIFICATIONS}
+              className="border-b-2 border-transparent px-3 py-3 text-sm font-medium text-slate-600 hover:border-slate-300 hover:text-slate-900"
+            >
+              Notifications
             </Link>
           </div>
         </nav>
@@ -161,6 +177,45 @@ export default function DashboardLayout({ title }) {
             >
               Voting history
             </NavLink>
+            <NavLink
+              to={ROUTES.VOTER_RESULTS}
+              className={({ isActive }) =>
+                [
+                  'border-b-2 px-3 py-3 text-sm font-medium transition-colors',
+                  isActive
+                    ? 'border-primary-600 text-primary-700'
+                    : 'border-transparent text-slate-600 hover:border-slate-300 hover:text-slate-900',
+                ].join(' ')
+              }
+            >
+              Results
+            </NavLink>
+            <NavLink
+              to={ROUTES.VOTER_AUDIT}
+              className={({ isActive }) =>
+                [
+                  'border-b-2 px-3 py-3 text-sm font-medium transition-colors',
+                  isActive
+                    ? 'border-primary-600 text-primary-700'
+                    : 'border-transparent text-slate-600 hover:border-slate-300 hover:text-slate-900',
+                ].join(' ')
+              }
+            >
+              My activity
+            </NavLink>
+            <NavLink
+              to={ROUTES.VOTER_NOTIFICATIONS}
+              className={({ isActive }) =>
+                [
+                  'border-b-2 px-3 py-3 text-sm font-medium transition-colors',
+                  isActive
+                    ? 'border-primary-600 text-primary-700'
+                    : 'border-transparent text-slate-600 hover:border-slate-300 hover:text-slate-900',
+                ].join(' ')
+              }
+            >
+              Notifications
+            </NavLink>
             <Link
               to={ROUTES.PUBLIC_ELECTIONS}
               className="border-b-2 border-transparent px-3 py-3 text-sm font-medium text-slate-600 hover:border-slate-300 hover:text-slate-900"
@@ -224,6 +279,24 @@ export default function DashboardLayout({ title }) {
               className="border-b-2 border-transparent px-3 py-3 text-sm font-medium text-slate-600 hover:border-slate-300 hover:text-slate-900"
             >
               Secret IDs
+            </Link>
+            <Link
+              to={ROUTES.CREATOR_RESULTS}
+              className="border-b-2 border-transparent px-3 py-3 text-sm font-medium text-slate-600 hover:border-slate-300 hover:text-slate-900"
+            >
+              Results
+            </Link>
+            <Link
+              to={ROUTES.CREATOR_AUDIT}
+              className="border-b-2 border-transparent px-3 py-3 text-sm font-medium text-slate-600 hover:border-slate-300 hover:text-slate-900"
+            >
+              Audit
+            </Link>
+            <Link
+              to={ROUTES.CREATOR_NOTIFICATIONS}
+              className="border-b-2 border-transparent px-3 py-3 text-sm font-medium text-slate-600 hover:border-slate-300 hover:text-slate-900"
+            >
+              Notifications
             </Link>
           </div>
         </nav>

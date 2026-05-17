@@ -13,6 +13,7 @@ import { ROUTES, USER_ROLES } from '../utils/constants';
 import { validateSignupForm } from '../utils/signupValidation';
 import { validateCreatorRequestFields } from '../utils/creatorRequestValidation';
 import { createCreatorRequest } from '../services/creatorRequestService';
+import { sendSignupVerificationEmail } from '../services/notificationService';
 import { getPostAuthDestination } from '../utils/postAuthNavigation';
 import { normalizePhone } from '../utils/validators';
 import { getSelectedRole } from '../utils/roleStorage';
@@ -124,6 +125,16 @@ export default function Signup() {
 
       const destination = await getPostAuthDestination(actualRole, user?.id);
 
+      try {
+        await sendSignupVerificationEmail({
+          email: form.email,
+          userId: user.id,
+          fullName: form.fullName,
+        });
+      } catch (emailErr) {
+        console.warn('[Signup] Verification email:', emailErr?.message);
+      }
+
       if (requiresMfa) {
         await sendMfaOtp(form.email);
         toast.success('Verification code sent to your email.');
@@ -134,6 +145,12 @@ export default function Signup() {
             otpSent: true,
           },
         });
+        return;
+      }
+
+      if (!user.email_confirmed_at) {
+        toast.success('Account created! Check your email to verify your address.');
+        navigate(ROUTES.VERIFY_EMAIL, { replace: true });
         return;
       }
 

@@ -6,8 +6,12 @@ All email is sent through the **`send-email`** Supabase Edge Function using [Res
 |------|----------------|
 | MFA / 2FA codes | `mfa_send` / `mfa_verify` |
 | Password reset | `password_reset_send` / `password_reset_complete` |
-| Sign-up (no inbox confirm) | `confirm_signup_email` auto-confirms in Auth |
-| Creator approved/rejected | `send` (transactional HTML) |
+| Sign-up email verification | `signup_verification_send` / `signup_verification_verify` (60s resend cooldown) |
+| Creator approved/rejected | `creator_approved_notify` / `creator_rejected_notify` + in-app notification |
+| Secret ID delivery | `secret_id_send` / `secret_id_send_all` + `email_logs` |
+| Election reminders (24h, 1h) | `email_schedules` + `process_scheduled_emails` |
+| Election ended / winner | `process_scheduled_emails` (after publish / finalize) |
+| In-app bell & center | `notifications` table + Realtime |
 
 ## 1. Supabase Auth settings
 
@@ -18,7 +22,7 @@ In **Authentication → Providers → Email**:
 
 ## 2. Database migration
 
-Run `supabase/migrations/011_email_verification_codes.sql` in the SQL Editor.
+Run migrations through **`016_notifications.sql`** in the SQL Editor (includes `011` verification codes + notification tables).
 
 ## 3. Edge Function secrets
 
@@ -52,6 +56,14 @@ supabase functions deploy send-email
 Until `send-email` is deployed, the app shows: *Failed to send a request to the Edge Function*.
 
 ## 5. Local `.env`
+
+**Never put `VITE_RESEND_API_KEY` in the browser** — Resend keys belong only in Edge Function secrets.
+
+For the React app, set:
+
+```env
+VITE_APP_URL=http://localhost:5173
+```
 
 For reference and local tooling, set in `.env` (gitignored):
 
