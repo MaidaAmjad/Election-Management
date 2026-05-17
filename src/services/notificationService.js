@@ -133,6 +133,38 @@ export async function sendCreatorRejectedEmail({
   });
 }
 
+export async function sendElectionApprovedEmail({
+  userId,
+  to,
+  creatorName,
+  electionTitle,
+}) {
+  return invokeEmailService({
+    action: 'election_approved_notify',
+    userId,
+    email: to,
+    creatorName,
+    electionTitle,
+  });
+}
+
+export async function sendElectionRejectedEmail({
+  userId,
+  to,
+  creatorName,
+  electionTitle,
+  rejectionReason,
+}) {
+  return invokeEmailService({
+    action: 'election_rejected_notify',
+    userId,
+    email: to,
+    creatorName,
+    electionTitle,
+    rejectionReason,
+  });
+}
+
 export async function sendSecretIdEmail({ secretRowId }) {
   return invokeEmailService({
     action: 'secret_id_send',

@@ -7,8 +7,8 @@ import {
 export function validateCandidateForm(form, { requirePhoto, photoFile } = {}) {
   const errors = {};
 
-  if (!form.election_id?.trim()) {
-    errors.election_id = 'Select an election.';
+  if (!form.poll_id?.trim()) {
+    errors.poll_id = 'Poll is required.';
   }
 
   const name = form.name?.trim() ?? '';

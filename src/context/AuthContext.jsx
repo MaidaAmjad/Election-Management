@@ -184,6 +184,22 @@ export function AuthProvider({ children }) {
       let newSession = data.session;
       let newUser = data.user;
 
+      if (data.addedRole && newSession && newUser) {
+        setSession(newSession);
+        setUser(newUser);
+        clearMfaVerified(newUser.id);
+        setMfaVerifiedState(false);
+        const userProfile = data.profile ?? (await loadProfile(newUser));
+        if (userProfile) setProfile(userProfile);
+        return {
+          session: newSession,
+          user: newUser,
+          profile: userProfile,
+          requiresMfa: Boolean(userProfile?.mfa_email_enabled),
+          addedRole: true,
+        };
+      }
+
       if (!newSession && newUser && credentials.password) {
         try {
           const signedIn = await signInWithEmail(
@@ -229,6 +245,7 @@ export function AuthProvider({ children }) {
         user: newUser,
         profile: userProfile,
         requiresMfa: Boolean(userProfile?.mfa_email_enabled),
+        addedRole: false,
       };
     },
     [loadProfile],

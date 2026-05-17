@@ -6,6 +6,7 @@ import {
   HiOutlineRocketLaunch,
 } from 'react-icons/hi2';
 import ElectionStatusBadge from './ElectionStatusBadge';
+import ElectionApprovalStatusBadge from './ElectionApprovalStatusBadge';
 import { ROUTES } from '../../utils/constants';
 import { formatElectionDate } from '../../utils/electionFormatters';
 import { isElectionEditable } from '../../utils/electionStatus';
@@ -38,6 +39,7 @@ export default function ElectionTable({
                 'Registration',
                 'Max voters',
                 'Status',
+                'Approval',
                 'Actions',
               ].map((heading) => (
                 <th
@@ -74,6 +76,9 @@ export default function ElectionTable({
                   </td>
                   <td className="px-4 py-3">
                     <ElectionStatusBadge status={election.effectiveStatus} />
+                  </td>
+                  <td className="px-4 py-3">
+                    <ElectionApprovalStatusBadge status={election.approval_status} />
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex flex-wrap gap-1">

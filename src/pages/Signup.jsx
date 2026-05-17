@@ -17,7 +17,10 @@ import { sendSignupVerificationEmail } from '../services/notificationService';
 import { getPostAuthDestination } from '../utils/postAuthNavigation';
 import { normalizePhone } from '../utils/validators';
 import { getSelectedRole } from '../utils/roleStorage';
-import { normalizeRole } from '../utils/roleHelpers';
+import { normalizeRole, profileHasRole } from '../utils/roleHelpers';
+import { syncActiveProfileRole } from '../services/profileService';
+import { registerAdditionalRole } from '../services/userRoleService';
+import { formatRoleRegistrationError } from '../utils/authErrors';
 
 const initialForm = {
   fullName: '',
@@ -31,10 +34,24 @@ const initialForm = {
 
 export default function Signup() {
   const navigate = useNavigate();
-  const { signup, sendMfaOtp } = useAuth();
+  const {
+    signup,
+    sendMfaOtp,
+    logout,
+    refreshProfile,
+    user,
+    isAuthenticated,
+    isReady,
+    profile,
+  } = useAuth();
   const selectedRole = getSelectedRole();
   const isCreatorSignup =
     normalizeRole(selectedRole) === USER_ROLES.ELECTION_CREATOR;
+  const isVoterSignup = normalizeRole(selectedRole) === USER_ROLES.VOTER;
+  const alreadyHasSelectedRole =
+    isAuthenticated && isReady && profileHasRole(profile, selectedRole);
+  const signedInCanAddRole =
+    isAuthenticated && isReady && profile && !alreadyHasSelectedRole;
 
   const [form, setForm] = useState(initialForm);
   const [errors, setErrors] = useState({});
@@ -74,45 +91,68 @@ export default function Signup() {
     return Object.keys(nextErrors).length === 0;
   }
 
+  async function handleSignOutForSignup() {
+    await logout();
+    toast.success('Signed out. You can now create your account.');
+  }
+
   async function handleSubmit(event) {
     event.preventDefault();
     setFormError('');
+
+    if (alreadyHasSelectedRole) {
+      setFormError(`You already have the ${selectedRole} role. Sign in instead.`);
+      return;
+    }
 
     if (!validate()) return;
 
     setIsSubmitting(true);
 
     try {
-      const { user, profile, requiresMfa } = await signup({
+      let authUser = user;
+      let userProfile = profile;
+      let requiresMfa = false;
+
+      if (isAuthenticated && authUser && signedInCanAddRole) {
+        await registerAdditionalRole({
+          role: selectedRole,
+          fullName: form.fullName,
+          phone: normalizePhone(form.phone),
+        });
+        await syncActiveProfileRole(authUser.id, selectedRole);
+        userProfile = await refreshProfile();
+        requiresMfa = Boolean(userProfile?.mfa_email_enabled);
+      } else {
+        const result = await signup({
           email: form.email,
           password: form.password,
           fullName: form.fullName,
           phone: normalizePhone(form.phone),
           role: selectedRole,
         });
-
-      if (user?.identities?.length === 0) {
-        setErrors({ email: 'An account with this email already exists.' });
-        toast.error('An account with this email already exists.');
-        return;
+        authUser = result.user;
+        userProfile = result.profile;
+        requiresMfa = result.requiresMfa;
       }
 
-      if (!profile?.role) {
+      if (!userProfile || !authUser) {
         setFormError(
           'Your profile could not be loaded. Please sign in or contact support.',
         );
         return;
       }
 
-      const actualRole = normalizeRole(profile.role);
-      if (actualRole !== selectedRole) {
-        setFormError('Account role mismatch. Please contact support.');
+      if (!profileHasRole(userProfile, selectedRole)) {
+        setFormError(
+          'The selected role could not be added. If this keeps happening, ask your administrator to run migration 020_user_roles_multi_role.sql in Supabase.',
+        );
         return;
       }
 
       if (isCreatorSignup) {
         await createCreatorRequest({
-          userId: user.id,
+          userId: authUser.id,
           purpose: form.purpose,
           email: form.email,
           phone: normalizePhone(form.phone),
@@ -123,12 +163,12 @@ export default function Signup() {
         );
       }
 
-      const destination = await getPostAuthDestination(actualRole, user?.id);
+      const destination = await getPostAuthDestination(selectedRole, authUser.id);
 
       try {
         await sendSignupVerificationEmail({
           email: form.email,
-          userId: user.id,
+          userId: authUser.id,
           fullName: form.fullName,
         });
       } catch (emailErr) {
@@ -148,19 +188,23 @@ export default function Signup() {
         return;
       }
 
-      if (!user.email_confirmed_at) {
+      if (!authUser.email_confirmed_at) {
         toast.success('Account created! Check your email to verify your address.');
         navigate(ROUTES.VERIFY_EMAIL, { replace: true });
         return;
       }
 
       if (!isCreatorSignup) {
-        toast.success('Account created! Welcome.');
+        toast.success(
+          signedInCanAddRole
+            ? `${selectedRole} role added to your account.`
+            : 'Account created! Welcome.',
+        );
       }
 
       navigate(destination, { replace: true });
     } catch (error) {
-      const message = error.message ?? 'Failed to create account. Please try again.';
+      const message = formatRoleRegistrationError(error);
       setFormError(message);
       toast.error(message);
     } finally {
@@ -194,7 +238,17 @@ export default function Signup() {
           Back to sign in
         </Link>
         <SelectedRoleBanner role={selectedRole} mode="signup" />
-        </div>
+
+        {signedInCanAddRole && (
+          <div
+            role="alert"
+            className="rounded-lg border border-primary-200 bg-primary-50 px-4 py-3 text-sm text-primary-900"
+          >
+            You are signed in. Submit this form with your password to add the{' '}
+            {selectedRole} role to your existing account (same email).
+          </div>
+        )}
+      </div>
 
       <form onSubmit={handleSubmit} className="space-y-5" noValidate>
         {formError && (
@@ -296,7 +350,9 @@ export default function Signup() {
         <p className="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-500">
           {isCreatorSignup
             ? 'Election Creator access requires Super Admin approval after sign-up. You will be notified by email when your request is reviewed.'
-            : 'Role is set from your selection. Sign in immediately after creating your account with email and password.'}
+            : isVoterSignup
+              ? 'You can use the same email as your Election Creator account. Enter your existing password to add the Voter role.'
+              : 'Role is set from your selection. Sign in after creating your account with email and password.'}
         </p>
 
         <Button

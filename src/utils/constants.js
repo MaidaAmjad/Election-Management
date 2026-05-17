@@ -18,6 +18,7 @@ export const ROUTES = {
   VOTER_NOTIFICATIONS: '/voter-dashboard/notifications',
   ADMIN_DASHBOARD: '/admin-dashboard',
   ADMIN_REQUESTS: '/admin-dashboard/requests',
+  ADMIN_ELECTION_REQUESTS: '/admin-dashboard/election-requests',
   ADMIN_APPROVED_ELECTIONS: '/admin-dashboard/approved-elections',
   ADMIN_ACTIVITY_LOGS: '/admin-dashboard/activity-logs',
   ADMIN_FINALIZED_VOTERS: '/admin-dashboard/finalized-voters',

@@ -1,4 +1,5 @@
 import { ELECTION_STATUS } from './electionConstants';
+import { ELECTION_APPROVAL_STATUS } from './electionApprovalConstants';
 
 /**
  * Derives display status from stored status and schedule.
@@ -30,10 +31,17 @@ export function getEffectiveStatus(election) {
   return stored;
 }
 
+export function isElectionPendingApproval(election) {
+  return election?.approval_status === ELECTION_APPROVAL_STATUS.PENDING;
+}
+
 export function isElectionEditable(election) {
-  return election?.status === ELECTION_STATUS.DRAFT;
+  if (election?.status !== ELECTION_STATUS.DRAFT) return false;
+  if (isElectionPendingApproval(election)) return false;
+  const approval = election?.approval_status;
+  return !approval || approval === ELECTION_APPROVAL_STATUS.REJECTED;
 }
 
 export function isElectionReadOnly(election) {
-  return election?.status !== ELECTION_STATUS.DRAFT;
+  return !isElectionEditable(election);
 }

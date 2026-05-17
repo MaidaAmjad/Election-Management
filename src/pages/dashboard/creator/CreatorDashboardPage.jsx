@@ -99,7 +99,6 @@ export default function CreatorDashboardPage() {
 
   const quickActions = [
     { label: 'Create new election', to: `${ROUTES.CREATOR_DASHBOARD}/elections/new`, icon: HiOutlinePlus },
-    { label: 'Add candidates', to: `${ROUTES.CREATOR_CANDIDATES}/new`, icon: HiOutlineUserGroup },
     { label: 'Generate secret IDs', to: ROUTES.CREATOR_SECRET_IDS, icon: HiOutlineKey },
     { label: 'Finalize voters', to: ROUTES.CREATOR_FINALIZED_VOTERS, icon: HiOutlineUsers },
   ];

@@ -1,8 +1,22 @@
 import { supabase } from '../supabase/supabase';
 import { USER_ROLES } from '../utils/constants';
 import { normalizeRole } from '../utils/roleHelpers';
+import { fetchUserRoles } from './userRoleService';
 
 const PROFILE_BASE_COLUMNS = 'id, full_name, phone, role, created_at';
+
+async function attachRoles(profile) {
+  if (!profile?.id) return profile;
+  const fromTable = await fetchUserRoles(profile.id);
+  const fromProfile = normalizeRole(profile.role);
+  const merged = [
+    ...new Set([...fromTable, ...(fromProfile ? [fromProfile] : [])]),
+  ];
+  return {
+    ...profile,
+    roles: merged,
+  };
+}
 
 function mapProfileRow(row) {
   if (!row) return null;
@@ -10,6 +24,7 @@ function mapProfileRow(row) {
     ...row,
     mfa_email_enabled: row.mfa_email_enabled ?? false,
     role: normalizeRole(row.role) ?? row.role,
+    roles: [],
   };
 }
 
@@ -21,7 +36,7 @@ export async function getProfileByUserId(userId) {
     .maybeSingle();
 
   if (!error && data) {
-    return mapProfileRow(data);
+    return attachRoles(mapProfileRow(data));
   }
 
   if (error?.code === '42703' || error?.message?.includes('mfa_email_enabled')) {
@@ -32,11 +47,11 @@ export async function getProfileByUserId(userId) {
       .maybeSingle();
 
     if (fallbackError) throw fallbackError;
-    return mapProfileRow(fallbackData);
+    return attachRoles(mapProfileRow(fallbackData));
   }
 
   if (error) throw error;
-  return mapProfileRow(data);
+  return attachRoles(mapProfileRow(data));
 }
 
 export async function ensureProfileForUser(user) {
@@ -75,7 +90,36 @@ export async function createProfile({ id, fullName, phone, role }) {
     .single();
 
   if (error) throw error;
-  return mapProfileRow(data);
+  const mapped = mapProfileRow(data);
+  return attachRoles({ ...mapped, role: normalizedRole });
+}
+
+/** Active role for legacy profile.role column (audit, dashboards). */
+export async function syncActiveProfileRole(userId, role) {
+  const normalizedRole = normalizeRole(role);
+  if (!userId || !normalizedRole) return null;
+
+  const { data, error } = await supabase
+    .from('profiles')
+    .update({ role: normalizedRole })
+    .eq('id', userId)
+    .select(`${PROFILE_BASE_COLUMNS}, mfa_email_enabled`)
+    .single();
+
+  if (error?.code === '42703' || error?.message?.includes('mfa_email_enabled')) {
+    const { data: fallbackData, error: fallbackError } = await supabase
+      .from('profiles')
+      .update({ role: normalizedRole })
+      .eq('id', userId)
+      .select(PROFILE_BASE_COLUMNS)
+      .single();
+
+    if (fallbackError) throw fallbackError;
+    return attachRoles(mapProfileRow(fallbackData));
+  }
+
+  if (error) throw error;
+  return attachRoles(mapProfileRow(data));
 }
 
 export async function updateProfileRole(userId, role) {

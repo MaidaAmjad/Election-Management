@@ -6,6 +6,7 @@ import ProtectedRoute from '../components/routing/ProtectedRoute';
 import MfaProtectedRoute from '../components/routing/MfaProtectedRoute';
 import RoleProtectedRoute from '../components/routing/RoleProtectedRoute';
 import GuestRoute from '../components/routing/GuestRoute';
+import AuthFormRoute from '../components/routing/AuthFormRoute';
 import RoleRequiredRoute from '../components/routing/RoleRequiredRoute';
 import SignupAllowedRoute from '../components/routing/SignupAllowedRoute';
 import LandingPage from '../pages/public/LandingPage';
@@ -22,6 +23,7 @@ import ResetPassword from '../pages/ResetPassword';
 import Settings from '../pages/Settings';
 import AdminDashboardPage from '../pages/dashboard/admin/AdminDashboardPage';
 import CreatorRequestsPage from '../pages/admin/CreatorRequestsPage';
+import ElectionRequestsPage from '../pages/admin/ElectionRequestsPage';
 import ApprovedElectionsPage from '../pages/admin/ApprovedElectionsPage';
 import ActivityLogsPage from '../pages/admin/ActivityLogsPage';
 import CreatorApprovalStatusPage from '../pages/creator/CreatorApprovalStatusPage';
@@ -31,10 +33,7 @@ import CreatorDashboardPage from '../pages/dashboard/creator/CreatorDashboardPag
 import VoterDashboardPage from '../pages/dashboard/voter/VoterDashboardPage';
 import ElectionFormPage from '../pages/elections/ElectionFormPage';
 import ElectionViewPage from '../pages/elections/ElectionViewPage';
-import CandidateDashboardPage from '../pages/candidates/CandidateDashboardPage';
-import CandidateListPage from '../pages/candidates/CandidateListPage';
-import CandidateFormPage from '../pages/candidates/CandidateFormPage';
-import CandidateDetailPage from '../pages/candidates/CandidateDetailPage';
+import CandidateModuleRedirect from '../pages/candidates/CandidateModuleRedirect';
 import MyJoinedElectionsPage from '../pages/voters/MyJoinedElectionsPage';
 import AdminFinalizedVotersPage from '../pages/finalization/AdminFinalizedVotersPage';
 import AdminFinalizationDetailPage from '../pages/finalization/AdminFinalizationDetailPage';
@@ -105,23 +104,23 @@ export default function AppRoutes() {
           <Route
             path={ROUTES.LOGIN}
             element={
-              <GuestRoute>
+              <AuthFormRoute>
                 <RoleRequiredRoute>
                   <Login />
                 </RoleRequiredRoute>
-              </GuestRoute>
+              </AuthFormRoute>
             }
           />
           <Route
             path={ROUTES.SIGNUP}
             element={
-              <GuestRoute>
+              <AuthFormRoute>
                 <RoleRequiredRoute>
                   <SignupAllowedRoute>
                     <Signup />
                   </SignupAllowedRoute>
                 </RoleRequiredRoute>
-              </GuestRoute>
+              </AuthFormRoute>
             }
           />
           <Route
@@ -158,6 +157,7 @@ export default function AppRoutes() {
         >
           <Route index element={<AdminDashboardPage />} />
           <Route path="requests" element={<CreatorRequestsPage />} />
+          <Route path="election-requests" element={<ElectionRequestsPage />} />
           <Route path="approved-elections" element={<ApprovedElectionsPage />} />
           <Route path="activity-logs" element={<ActivityLogsPage />} />
           <Route
@@ -199,11 +199,7 @@ export default function AppRoutes() {
             <Route path="elections/new" element={<ElectionFormPage />} />
             <Route path="elections/:id" element={<ElectionViewPage />} />
             <Route path="elections/:id/edit" element={<ElectionFormPage />} />
-            <Route path="candidates" element={<CandidateDashboardPage />} />
-            <Route path="candidates/list" element={<CandidateListPage />} />
-            <Route path="candidates/new" element={<CandidateFormPage />} />
-            <Route path="candidates/:id" element={<CandidateDetailPage />} />
-            <Route path="candidates/:id/edit" element={<CandidateFormPage />} />
+            <Route path="candidates/*" element={<CandidateModuleRedirect />} />
             <Route
               path="finalized-voters"
               element={<CreatorFinalizedVotersPage />}

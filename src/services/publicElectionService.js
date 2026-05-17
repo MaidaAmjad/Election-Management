@@ -1,10 +1,53 @@
 import { supabase } from '../supabase/supabase';
 import { getPublicElectionStatus } from '../utils/publicElectionStatus';
+import { loadPollsWithCandidates } from '../utils/pollCandidatesLoader';
 import { fetchVoterRegistrationForElection } from './voterRegistrationService';
+
+function mapVoteTotalsRpc(data) {
+  if (!data || typeof data !== 'object') return {};
+  const result = {};
+  Object.entries(data).forEach(([electionId, total]) => {
+    result[electionId] = Number(total ?? 0);
+  });
+  return result;
+}
 
 export async function fetchVoteCountsForElectionIds(electionIds) {
   if (!electionIds.length) return {};
 
+  const { data, error } = await supabase.rpc('get_public_election_vote_totals', {
+    p_election_ids: electionIds,
+  });
+
+  if (!error) {
+    return mapVoteTotalsRpc(data);
+  }
+
+  const missingRpc =
+    error.code === 'PGRST202' ||
+    error.message?.includes('get_public_election_vote_totals');
+
+  if (missingRpc || error.message?.includes('poll_vote_counts')) {
+    try {
+      return await fetchVoteCountsFromViewFallback(electionIds);
+    } catch (fallbackErr) {
+      if (
+        fallbackErr.message?.includes('poll_vote_counts') ||
+        fallbackErr.message?.includes('schema cache')
+      ) {
+        console.warn(
+          '[publicElections] Vote counts unavailable. Run supabase/migrations/019_poll_vote_counts_view.sql in the SQL Editor, then reload the API schema.',
+        );
+        return {};
+      }
+      throw fallbackErr;
+    }
+  }
+
+  throw error;
+}
+
+async function fetchVoteCountsFromViewFallback(electionIds) {
   const { data: polls, error: pollsError } = await supabase
     .from('polls')
     .select('id, election_id')
@@ -84,6 +127,7 @@ export async function fetchPublicElections() {
   const { data, error } = await supabase
     .from('elections')
     .select('*')
+    .eq('approval_status', 'Approved')
     .neq('status', 'Draft')
     .order('created_at', { ascending: false });
 
@@ -107,18 +151,19 @@ export async function fetchPublicElections() {
 export async function fetchPublicElectionById(electionId) {
   const { data, error } = await supabase
     .from('elections')
-    .select('*, polls(*, poll_candidates(*))')
+    .select('*')
     .eq('id', electionId)
+    .eq('approval_status', 'Approved')
     .neq('status', 'Draft')
     .single();
 
   if (error) throw error;
 
-  const { polls, ...electionRow } = data;
-  const pollsList = polls ?? [];
+  const pollsList = await loadPollsWithCandidates(electionId);
+  const electionRow = data;
 
   const candidateCount = pollsList.reduce(
-    (sum, poll) => sum + (poll.poll_candidates?.length ?? 0),
+    (sum, poll) => sum + (poll.candidates?.length ?? 0),
     0,
   );
 

@@ -4,7 +4,7 @@ import { HiOutlineArrowLeft, HiOutlineShieldCheck } from 'react-icons/hi2';
 import RoleCard from '../components/auth/RoleCard';
 import Button from '../components/ui/Button';
 import { APP_NAME, ROUTES, USER_ROLES } from '../utils/constants';
-import { ROLE_OPTIONS } from '../utils/roleConfig';
+import { ROLE_OPTIONS, getRoleOption } from '../utils/roleConfig';
 import { getSelectedRole, setSelectedRole } from '../utils/roleStorage';
 
 export default function RoleSelection() {
@@ -19,10 +19,18 @@ export default function RoleSelection() {
   function handleContinueToLogin() {
     if (!selected) return;
     setSelectedRole(selected);
-    navigate(ROUTES.LOGIN);
+    navigate(ROUTES.LOGIN, { state: { fromRoleSelection: true } });
+  }
+
+  function handleContinueToSignup() {
+    if (!selected) return;
+    setSelectedRole(selected);
+    navigate(ROUTES.SIGNUP, { state: { fromRoleSelection: true } });
   }
 
   const selectedOption = ROLE_OPTIONS.find((option) => option.role === selected);
+  const selectedMeta = selected ? getRoleOption(selected) : null;
+  const signupAllowed = Boolean(selectedMeta?.signupAllowed);
   const isSuperAdmin = selected === USER_ROLES.SUPER_ADMIN;
 
   return (
@@ -48,7 +56,7 @@ export default function RoleSelection() {
             Choose your role
           </h1>
           <p className="mx-auto mt-3 max-w-2xl text-slate-600">
-            Select how you will use the platform, then continue to the sign-in page
+            Select how you will use the platform, then sign in or create an account
             for that role.
           </p>
         </div>
@@ -84,13 +92,21 @@ export default function RoleSelection() {
               </p>
             )}
 
-            <Button
-              className="mt-6 w-full"
-              size="lg"
-              onClick={handleContinueToLogin}
-            >
-              Continue to sign in
-            </Button>
+            <div className="mt-6 flex flex-col gap-3">
+              <Button className="w-full" size="lg" onClick={handleContinueToLogin}>
+                Continue to sign in
+              </Button>
+              {signupAllowed && (
+                <Button
+                  className="w-full"
+                  size="lg"
+                  variant="secondary"
+                  onClick={handleContinueToSignup}
+                >
+                  Create account
+                </Button>
+              )}
+            </div>
           </div>
         )}
 

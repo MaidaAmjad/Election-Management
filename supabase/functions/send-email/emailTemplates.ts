@@ -59,6 +59,39 @@ export function creatorApprovedEmail(opts: {
   `);
 }
 
+export function electionApprovedEmail(opts: {
+  name?: string;
+  electionTitle: string;
+  dashboardUrl: string;
+}) {
+  const greeting = opts.name ? `Hello ${opts.name},` : 'Hello,';
+  return layout(`
+    <h1 style="margin:0 0 16px;font-size:22px;color:#0f172a;">Election Approved</h1>
+    <p>${greeting}</p>
+    <p>Your election <strong>${opts.electionTitle}</strong> has been <strong style="color:#16a34a;">approved</strong> by the administrator.</p>
+    <p>It is now published and visible to voters according to your schedule.</p>
+    ${button(opts.dashboardUrl, 'View election')}
+  `);
+}
+
+export function electionRejectedEmail(opts: {
+  name?: string;
+  electionTitle: string;
+  reason: string;
+  supportEmail?: string;
+}) {
+  const greeting = opts.name ? `Hello ${opts.name},` : 'Hello,';
+  const support = opts.supportEmail ?? 'support@electionmanagement.local';
+  return layout(`
+    <h1 style="margin:0 0 16px;font-size:22px;color:#0f172a;">Election Not Approved</h1>
+    <p>${greeting}</p>
+    <p>Your election <strong>${opts.electionTitle}</strong> was not approved at this time.</p>
+    <p style="background:#fef2f2;border-left:4px solid #ef4444;padding:12px 16px;border-radius:4px;"><strong>Reason:</strong> ${opts.reason}</p>
+    <p>You may edit the election and submit it again for review from your creator dashboard.</p>
+    <p>Questions? Contact <a href="mailto:${support}" style="color:${PRIMARY};">${support}</a>.</p>
+  `);
+}
+
 export function creatorRejectedEmail(opts: {
   name?: string;
   reason: string;

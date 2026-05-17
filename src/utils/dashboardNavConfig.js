@@ -16,9 +16,15 @@ import { ROUTES, USER_ROLES } from './constants';
 export const DASHBOARD_NAV = {
   [USER_ROLES.SUPER_ADMIN]: [
     { label: 'Dashboard', to: ROUTES.ADMIN_DASHBOARD, icon: HiOutlineHome, end: true },
-    { label: 'Requests', to: ROUTES.ADMIN_REQUESTS, icon: HiOutlineClipboardDocumentList },
-    { label: 'Elections', to: ROUTES.ADMIN_APPROVED_ELECTIONS, icon: HiOutlineDocumentText },
-    { label: 'Audit Logs', to: ROUTES.ADMIN_AUDIT, icon: HiOutlineShieldCheck },
+    { label: 'Creator requests', to: ROUTES.ADMIN_REQUESTS, icon: HiOutlineUserGroup },
+    {
+      label: 'Election requests',
+      to: ROUTES.ADMIN_ELECTION_REQUESTS,
+      icon: HiOutlineClipboardDocumentList,
+    },
+    { label: 'Approved elections', to: ROUTES.ADMIN_APPROVED_ELECTIONS, icon: HiOutlineDocumentText },
+    { label: 'Activity logs', to: ROUTES.ADMIN_ACTIVITY_LOGS, icon: HiOutlineDocumentText },
+    { label: 'Audit', to: ROUTES.ADMIN_AUDIT, icon: HiOutlineShieldCheck },
     { label: 'Finalized Voters', to: ROUTES.ADMIN_FINALIZED_VOTERS, icon: HiOutlineUsers },
     { label: 'Secret IDs', to: ROUTES.ADMIN_SECRET_IDS, icon: HiOutlineKey },
     { label: 'Results', to: ROUTES.ADMIN_RESULTS, icon: HiOutlineChartBar },
@@ -28,7 +34,6 @@ export const DASHBOARD_NAV = {
   [USER_ROLES.ELECTION_CREATOR]: [
     { label: 'Dashboard', to: ROUTES.CREATOR_DASHBOARD, icon: HiOutlineHome, end: true },
     { label: 'My Elections', to: ROUTES.CREATOR_ELECTIONS, icon: HiOutlineDocumentText },
-    { label: 'Candidates', to: ROUTES.CREATOR_CANDIDATES, icon: HiOutlineUserGroup },
     { label: 'Secret IDs', to: ROUTES.CREATOR_SECRET_IDS, icon: HiOutlineKey },
     { label: 'Results', to: ROUTES.CREATOR_RESULTS, icon: HiOutlineChartBar },
     { label: 'Notifications', to: ROUTES.CREATOR_NOTIFICATIONS, icon: HiOutlineBell },

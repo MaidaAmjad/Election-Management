@@ -48,7 +48,8 @@ export default function ApprovedElectionsPage() {
       <div>
         <h2 className="text-2xl font-bold text-slate-900">Approved elections</h2>
         <p className="mt-1 text-slate-600">
-          Elections created by approved election creators.
+          Elections that have been approved by Super Admin and are published on the
+          platform.
         </p>
       </div>
 

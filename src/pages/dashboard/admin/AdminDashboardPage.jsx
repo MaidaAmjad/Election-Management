@@ -60,7 +60,8 @@ export default function AdminDashboardPage() {
   }
 
   const quickActions = [
-    { label: 'Election requests', to: ROUTES.ADMIN_REQUESTS, icon: HiOutlineClipboardDocumentList },
+    { label: 'Election requests', to: ROUTES.ADMIN_ELECTION_REQUESTS, icon: HiOutlineClipboardDocumentList },
+    { label: 'Creator requests', to: ROUTES.ADMIN_REQUESTS, icon: HiOutlineUsers },
     { label: 'View audit logs', to: ROUTES.ADMIN_AUDIT, icon: HiOutlineShieldCheck },
     { label: 'Manage elections', to: ROUTES.ADMIN_APPROVED_ELECTIONS, icon: HiOutlineDocumentText },
     { label: 'Finalized voters', to: ROUTES.ADMIN_FINALIZED_VOTERS, icon: HiOutlineUsers },

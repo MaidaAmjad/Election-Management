@@ -4,6 +4,13 @@ import {
   ROUTES,
   USER_ROLES,
 } from './constants';
+import { getSelectedRole } from './roleStorage';
+
+export function userHasRoleInList(roles, role) {
+  const normalized = normalizeRole(role);
+  if (!normalized || !roles?.length) return false;
+  return roles.some((r) => normalizeRole(r) === normalized);
+}
 
 /** Maps legacy or metadata role values to canonical profile roles */
 const ROLE_ALIASES = {
@@ -27,16 +34,38 @@ export function normalizeRole(role) {
 }
 
 /**
- * Resolves role from profile first, then Supabase user metadata.
+ * Resolves the active role: selected role (if assigned), else profile, else metadata.
  */
 export function resolveRole(profile, user) {
+  const roles = (profile?.roles ?? [])
+    .map((r) => normalizeRole(r))
+    .filter(Boolean);
+
+  const selected = normalizeRole(getSelectedRole());
+  if (selected && userHasRoleInList(roles, selected)) {
+    return selected;
+  }
+
+  if (selected && roles.length === 0) {
+    const fromProfile = normalizeRole(profile?.role);
+    if (fromProfile === selected) return selected;
+  }
+
+  if (roles.length === 1) return roles[0];
+
   const fromProfile = normalizeRole(profile?.role);
-  if (fromProfile) return fromProfile;
+  if (fromProfile && (roles.length === 0 || roles.includes(fromProfile))) {
+    return fromProfile;
+  }
 
   const fromMetadata = normalizeRole(user?.user_metadata?.role);
   if (fromMetadata) return fromMetadata;
 
-  return null;
+  return selected ?? null;
+}
+
+export function profileHasRole(profile, role) {
+  return userHasRoleInList(profile?.roles ?? [], role);
 }
 
 export function getDashboardPathForRole(role) {

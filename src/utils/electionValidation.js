@@ -5,6 +5,16 @@ export const emptyPoll = () => ({
   title: '',
   description: '',
   isNew: true,
+  candidates: [],
+});
+
+export const emptyCandidateDraft = () => ({
+  id: crypto.randomUUID(),
+  name: '',
+  designation: '',
+  manifesto: '',
+  photo_url: '',
+  isNew: true,
 });
 
 export const emptyElectionForm = () => ({
@@ -15,7 +25,7 @@ export const emptyElectionForm = () => ({
   end_datetime: '',
   registration_deadline: '',
   max_voters: '',
-  polls: [emptyPoll()],
+  polls: [],
 });
 
 export function toDatetimeLocalValue(isoString) {
@@ -30,7 +40,7 @@ export function fromDatetimeLocalValue(value) {
   return new Date(value).toISOString();
 }
 
-export function validateElectionForm(form, { isPublish = false } = {}) {
+export function validateElectionForm(form, { isPublish = false, includePolls = true } = {}) {
   const errors = {};
 
   if (!form.title?.trim()) {
@@ -89,6 +99,10 @@ export function validateElectionForm(form, { isPublish = false } = {}) {
   }
 
   const pollErrors = {};
+  if (!includePolls) {
+    return errors;
+  }
+
   (form.polls ?? []).forEach((poll, index) => {
     const pollFieldErrors = {};
     if (!poll.title?.trim()) {
@@ -113,6 +127,36 @@ export function validateElectionForm(form, { isPublish = false } = {}) {
   return errors;
 }
 
+/** Step 2: at least one saved candidate on the staging poll */
+export function validateStagingCandidates(polls) {
+  const staging = polls?.[0];
+  const count = staging?.candidates?.length ?? 0;
+  if (count < 1) {
+    return { candidatesGeneral: 'Add at least one candidate before continuing.' };
+  }
+  return {};
+}
+
+export function validateCandidatesForPublish(polls) {
+  const errors = {};
+  if (!polls?.length) {
+    return { pollsGeneral: 'Add at least one poll before publishing.' };
+  }
+
+  polls.forEach((poll, index) => {
+    const count = poll.candidates?.length ?? 0;
+    if (!poll.title?.trim()) return;
+    if (count < 1) {
+      errors[index] = 'Add at least one candidate to this poll.';
+    }
+  });
+
+  if (Object.keys(errors).length > 0) {
+    return { pollCandidates: errors };
+  }
+  return {};
+}
+
 export function hasValidationErrors(errors) {
   if (!errors || Object.keys(errors).length === 0) return false;
   if (errors.polls && typeof errors.polls === 'object') {
@@ -121,6 +165,7 @@ export function hasValidationErrors(errors) {
       Object.keys(errors.polls).length > 0
     );
   }
+  if (errors.candidatesGeneral) return true;
   return true;
 }
 
@@ -142,7 +187,28 @@ export function electionToForm(election, polls = []) {
             title: p.title ?? '',
             description: p.description ?? '',
             isNew: false,
+            candidates: (p.candidates ?? []).map((c) => ({
+              id: c.id,
+              name: c.name ?? '',
+              designation: c.designation ?? '',
+              manifesto: c.manifesto ?? '',
+              photo_url: c.photo_url ?? '',
+              poll_id: c.poll_id ?? p.id,
+              isNew: false,
+            })),
           }))
-        : [emptyPoll()],
+        : [],
   };
 }
+
+export const WIZARD_STEPS = {
+  DETAILS: 1,
+  CANDIDATES: 2,
+  POLLS: 3,
+};
+
+export const WIZARD_STEP_LABELS = [
+  'Election details',
+  'Add candidates',
+  'Create polls',
+];

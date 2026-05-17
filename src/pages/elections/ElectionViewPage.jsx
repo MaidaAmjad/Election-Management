@@ -4,7 +4,7 @@ import toast from 'react-hot-toast';
 import { HiOutlineArrowLeft, HiOutlinePencilSquare } from 'react-icons/hi2';
 import Button from '../../components/ui/Button';
 import Spinner from '../../components/ui/Spinner';
-import ElectionForm from '../../components/elections/ElectionForm';
+import ElectionReadOnlyView from '../../components/elections/ElectionReadOnlyView';
 import ElectionStatusBadge from '../../components/elections/ElectionStatusBadge';
 import { useAuth } from '../../hooks/useAuth';
 import { fetchElectionById } from '../../services/electionService';
@@ -93,7 +93,7 @@ export default function ElectionViewPage() {
         </div>
       </div>
 
-      <ElectionForm form={form} onChange={() => {}} readOnly />
+      <ElectionReadOnlyView form={{ ...form, electionId: election.id }} />
     </div>
   );
 }

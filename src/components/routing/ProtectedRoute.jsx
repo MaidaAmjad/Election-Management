@@ -17,7 +17,7 @@ export default function ProtectedRoute({ children }) {
 
   if (!isAuthenticated) {
     return (
-      <Navigate to={ROUTES.LOGIN} state={{ from: location }} replace />
+      <Navigate to={ROUTES.CHOOSE_ROLE} state={{ from: location }} replace />
     );
   }
 

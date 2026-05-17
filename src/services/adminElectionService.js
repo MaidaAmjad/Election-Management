@@ -1,5 +1,6 @@
 import { supabase } from '../supabase/supabase';
 import { CREATOR_REQUEST_STATUS } from '../utils/adminConstants';
+import { ELECTION_APPROVAL_STATUS } from '../utils/electionApprovalConstants';
 import { getEffectiveStatus } from '../utils/electionStatus';
 
 async function attachCreatorNames(elections) {
@@ -42,6 +43,7 @@ export async function fetchApprovedCreatorElections() {
     .from('elections')
     .select('*')
     .in('creator_id', creatorIds)
+    .eq('approval_status', ELECTION_APPROVAL_STATUS.APPROVED)
     .order('created_at', { ascending: false });
 
   if (error) throw error;

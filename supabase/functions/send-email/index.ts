@@ -3,6 +3,8 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
 import {
   creatorApprovedEmail,
   creatorRejectedEmail,
+  electionApprovedEmail,
+  electionRejectedEmail,
   electionEndedEmail,
   electionReminderEmail,
   secretIdEmail,
@@ -34,6 +36,8 @@ type EmailAction =
   | 'signup_verification_verify'
   | 'creator_approved_notify'
   | 'creator_rejected_notify'
+  | 'election_approved_notify'
+  | 'election_rejected_notify'
   | 'secret_id_send'
   | 'secret_id_send_all'
   | 'process_scheduled_emails'
@@ -857,6 +861,72 @@ serve(async (req) => {
         userId,
         title: 'Creator request rejected',
         message: `Your request was not approved. Reason: ${reason}`,
+        type: 'rejection',
+      });
+
+      return jsonResponse({ success: true });
+    }
+
+    if (action === 'election_approved_notify') {
+      const userId = String(body.userId ?? '').trim();
+      const email = String(body.email ?? '').trim().toLowerCase();
+      const creatorName = String(body.creatorName ?? '').trim();
+      const electionTitle = String(body.electionTitle ?? 'Your election').trim();
+      if (!userId || !email) {
+        return jsonResponse({ error: 'userId and email are required' }, 400);
+      }
+
+      const dashboardUrl = `${appOrigin()}/creator-dashboard/elections`;
+
+      await sendWithLog(admin, {
+        to: email,
+        subject: `Election approved: ${electionTitle}`,
+        html: electionApprovedEmail({
+          name: creatorName,
+          electionTitle,
+          dashboardUrl,
+        }),
+        userId,
+        notificationType: 'approval',
+      });
+
+      await createInAppNotification(admin, {
+        userId,
+        title: 'Election approved',
+        message: `"${electionTitle}" was approved and is now published.`,
+        type: 'approval',
+      });
+
+      return jsonResponse({ success: true });
+    }
+
+    if (action === 'election_rejected_notify') {
+      const userId = String(body.userId ?? '').trim();
+      const email = String(body.email ?? '').trim().toLowerCase();
+      const creatorName = String(body.creatorName ?? '').trim();
+      const electionTitle = String(body.electionTitle ?? 'Your election').trim();
+      const reason = String(body.rejectionReason ?? 'No reason provided.');
+      if (!userId || !email) {
+        return jsonResponse({ error: 'userId and email are required' }, 400);
+      }
+
+      await sendWithLog(admin, {
+        to: email,
+        subject: `Election not approved: ${electionTitle}`,
+        html: electionRejectedEmail({
+          name: creatorName,
+          electionTitle,
+          reason,
+          supportEmail: Deno.env.get('SUPPORT_EMAIL') ?? undefined,
+        }),
+        userId,
+        notificationType: 'rejection',
+      });
+
+      await createInAppNotification(admin, {
+        userId,
+        title: 'Election rejected',
+        message: `"${electionTitle}" was not approved. Reason: ${reason}`,
         type: 'rejection',
       });
 

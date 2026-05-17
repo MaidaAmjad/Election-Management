@@ -4,6 +4,7 @@ import { AUDIT_ACTIONS, AUDIT_MODULES } from '../utils/auditConstants';
 import { ELECTION_STATUS } from '../utils/electionConstants';
 import { fromDatetimeLocalValue } from '../utils/electionValidation';
 import { getEffectiveStatus } from '../utils/electionStatus';
+import { loadPollsWithCandidates } from '../utils/pollCandidatesLoader';
 
 function mapElectionRow(row, polls = []) {
   if (!row) return null;
@@ -32,15 +33,15 @@ export async function fetchElectionsByCreator(creatorId) {
 export async function fetchElectionById(electionId, creatorId) {
   const { data, error } = await supabase
     .from('elections')
-    .select('*, polls(*)')
+    .select('*')
     .eq('id', electionId)
     .eq('creator_id', creatorId)
     .single();
 
   if (error) throw error;
 
-  const { polls, ...election } = data;
-  return mapElectionRow(election, polls ?? []);
+  const pollsWithCandidates = await loadPollsWithCandidates(electionId);
+  return mapElectionRow(data, pollsWithCandidates);
 }
 
 function buildElectionPayload(form, creatorId, status) {
@@ -104,6 +105,83 @@ async function syncPolls(electionId, polls) {
       if (updateError) throw updateError;
     }
   }
+
+  return loadPollsWithCandidates(electionId);
+}
+
+/** Ensures a draft poll exists so candidates can be saved (step 2 before step 3). */
+export async function ensureStagingPoll(electionId) {
+  const polls = await loadPollsWithCandidates(electionId);
+  if (polls.length > 0) {
+    return polls[0];
+  }
+
+  const { data, error } = await supabase
+    .from('polls')
+    .insert({
+      election_id: electionId,
+      title: 'Ballot 1',
+      description: 'Primary ballot — assign additional polls in the next step.',
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return { ...data, candidates: [] };
+}
+
+async function copyStagingCandidatesToEmptyPolls(election, creatorId) {
+  const polls = election.polls ?? [];
+  const templates = polls[0]?.candidates ?? [];
+  if (!templates.length) return;
+
+  for (const poll of polls.slice(1)) {
+    if (poll.candidates?.length) continue;
+    const rows = templates.map((template) => ({
+      id: crypto.randomUUID(),
+      election_id: election.id,
+      poll_id: poll.id,
+      creator_id: creatorId,
+      name: template.name?.trim() ?? '',
+      designation: template.designation?.trim() ?? '',
+      manifesto: template.manifesto?.trim() ?? '',
+      photo_url: template.photo_url || null,
+    }));
+    const { error } = await supabase.from('candidates').insert(rows);
+    if (error) throw error;
+  }
+}
+
+export async function assertElectionReadyToPublish(electionId, creatorId) {
+  let election = await fetchElectionById(electionId, creatorId);
+  let polls = election.polls ?? [];
+
+  if (!polls.length) {
+    throw new Error('Add at least one poll before publishing.');
+  }
+
+  if (polls.length > 1 && polls[0]?.candidates?.length) {
+    await copyStagingCandidatesToEmptyPolls(election, creatorId);
+    election = await fetchElectionById(electionId, creatorId);
+    polls = election.polls ?? [];
+  }
+
+  if (!(polls[0]?.candidates?.length)) {
+    throw new Error('Add at least one candidate before publishing.');
+  }
+
+  for (const poll of polls) {
+    if (!poll.title?.trim()) {
+      throw new Error('Every poll must have a title before publishing.');
+    }
+    if (!poll.candidates?.length) {
+      throw new Error(
+        `Add at least one candidate to the poll "${poll.title}" before publishing.`,
+      );
+    }
+  }
+
+  return election;
 }
 
 export async function createElectionDraft(creatorId, form) {
@@ -147,28 +225,17 @@ export async function updateElectionDraft(electionId, creatorId, form) {
   return fetchElectionById(electionId, creatorId);
 }
 
+/** @deprecated Use submitElectionForApproval from electionApprovalService */
 export async function publishElection(electionId, creatorId, form) {
-  const { error } = await supabase
+  const { submitElectionForApproval } = await import('./electionApprovalService');
+  await syncPolls(electionId, form.polls ?? []);
+  await supabase
     .from('elections')
-    .update(buildElectionPayload(form, creatorId, ELECTION_STATUS.PUBLISHED))
+    .update(buildElectionPayload(form, creatorId, ELECTION_STATUS.DRAFT))
     .eq('id', electionId)
     .eq('creator_id', creatorId)
     .eq('status', ELECTION_STATUS.DRAFT);
-
-  if (error) throw error;
-
-  await syncPolls(electionId, form.polls ?? []);
-  await logAudit({
-    actionType: AUDIT_ACTIONS.ELECTION_PUBLISHED,
-    moduleName: AUDIT_MODULES.ELECTION,
-    description: `Election published: ${form.title}`,
-    electionId,
-    userId: creatorId,
-  }).catch(() => {});
-
-  const { scheduleElectionEmailReminders } = await import('./notificationService');
-  await scheduleElectionEmailReminders(electionId).catch(() => {});
-
+  await submitElectionForApproval(electionId, creatorId);
   return fetchElectionById(electionId, creatorId);
 }
 
