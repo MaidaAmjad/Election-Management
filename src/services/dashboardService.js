@@ -105,7 +105,6 @@ export function subscribeDashboardRealtime(onChange) {
     .on('postgres_changes', { event: '*', schema: 'public', table: 'elections' }, onChange)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'votes' }, onChange)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'voter_registrations' }, onChange)
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'audit_logs' }, onChange)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, onChange)
     .subscribe();
 

@@ -1,4 +1,5 @@
 import { ELECTION_CATEGORIES } from './electionConstants';
+import { getDisplayPolls, isStagingPoll } from './pollCandidatesLoader';
 
 export const emptyPoll = ({ isStaging = false } = {}) => ({
   id: crypto.randomUUID(),
@@ -106,7 +107,7 @@ export function validateElectionForm(form, { isPublish = false, includePolls = t
     return errors;
   }
 
-  const displayPolls = (form.polls ?? []).filter((p) => !p.isStaging);
+  const displayPolls = getDisplayPolls(form.polls);
   displayPolls.forEach((poll, index) => {
     const pollFieldErrors = {};
     if (!poll.title?.trim()) {
@@ -134,7 +135,7 @@ export function validateElectionForm(form, { isPublish = false, includePolls = t
 
 /** Step 2: at least one saved candidate on the staging poll */
 export function validateStagingCandidates(polls) {
-  const staging = polls?.find((p) => p.isStaging) ?? polls?.[0];
+  const staging = (polls ?? []).find((p) => isStagingPoll(p)) ?? polls?.[0];
   const count = staging?.candidates?.length ?? 0;
   if (count < 1) {
     return { candidatesGeneral: 'Add at least one candidate before continuing.' };
@@ -144,7 +145,7 @@ export function validateStagingCandidates(polls) {
 
 export function validateCandidatesForPublish(polls) {
   const errors = {};
-  const displayPolls = (polls ?? []).filter((p) => !p.isStaging);
+  const displayPolls = getDisplayPolls(polls);
   if (!displayPolls.length) {
     return { pollsGeneral: 'Add at least one poll before publishing.' };
   }
@@ -164,15 +165,26 @@ export function validateCandidatesForPublish(polls) {
 }
 
 export function hasValidationErrors(errors) {
-  if (!errors || Object.keys(errors).length === 0) return false;
+  return Boolean(errors && Object.keys(errors).length > 0);
+}
+
+/** First user-facing validation message for toasts. */
+export function getValidationErrorMessage(errors) {
+  if (!hasValidationErrors(errors)) return null;
+  if (errors.pollsGeneral) return errors.pollsGeneral;
+  if (errors.candidatesGeneral) return errors.candidatesGeneral;
   if (errors.polls && typeof errors.polls === 'object') {
-    return (
-      Object.keys(errors).length > 1 ||
-      Object.keys(errors.polls).length > 0
-    );
+    for (const key of Object.keys(errors.polls)) {
+      const pollErr = errors.polls[key];
+      const n = Number(key) + 1;
+      if (pollErr?.title) return `Poll ${n}: ${pollErr.title}`;
+      if (pollErr?.options) return `Poll ${n}: ${pollErr.options}`;
+    }
   }
-  if (errors.candidatesGeneral) return true;
-  return true;
+  const skip = new Set(['polls', 'pollsGeneral', 'candidatesGeneral', 'pollCandidates']);
+  const first = Object.keys(errors).find((k) => !skip.has(k));
+  if (first && errors[first]) return errors[first];
+  return 'Fix the highlighted errors before continuing.';
 }
 
 export function electionToForm(election, polls = []) {
@@ -197,7 +209,10 @@ export function electionToForm(election, polls = []) {
             ),
             optionCandidateIds: p.optionCandidateIds ?? (p.candidates ?? []).map((c) => c.id),
             isNew: false,
-            isStaging: Boolean(p.isStaging ?? p.is_staging),
+            isStaging: isStagingPoll({
+              ...p,
+              isStaging: p.isStaging ?? p.is_staging,
+            }),
             candidates: (p.candidates ?? []).map((c) => ({
               id: c.id,
               name: c.name ?? '',

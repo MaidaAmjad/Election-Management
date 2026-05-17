@@ -1,6 +1,4 @@
 import { supabase } from '../supabase/supabase';
-import { logAudit } from './auditLogService';
-import { AUDIT_ACTIONS, AUDIT_MODULES } from '../utils/auditConstants';
 import { ELECTION_APPROVAL_STATUS } from '../utils/electionApprovalConstants';
 import {
   sendElectionApprovedEmail,
@@ -26,7 +24,14 @@ async function attachCreatorDetails(elections) {
   const profileMap = Object.fromEntries((profiles ?? []).map((p) => [p.id, p]));
   const requestMap = {};
   for (const row of requests ?? []) {
-    if (!requestMap[row.user_id]) requestMap[row.user_id] = row;
+    const existing = requestMap[row.user_id];
+    if (!existing) {
+      requestMap[row.user_id] = row;
+      continue;
+    }
+    if (row.email && (!existing.email || row.status === 'Approved')) {
+      requestMap[row.user_id] = row;
+    }
   }
 
   return elections.map((election) => {
@@ -102,14 +107,6 @@ export async function submitElectionForApproval(electionId, creatorId) {
     throw new Error(data.message ?? 'Could not submit election for approval.');
   }
 
-  await logAudit({
-    userId: creatorId,
-    actionType: AUDIT_ACTIONS.ELECTION_SUBMITTED,
-    moduleName: AUDIT_MODULES.APPROVAL,
-    description: `Election submitted for admin approval.`,
-    electionId,
-  }).catch(() => {});
-
   return data;
 }
 
@@ -127,14 +124,8 @@ export async function approveElectionRequest(electionId, adminUserId) {
 
   await scheduleElectionEmailReminders(electionId).catch(() => {});
 
-  await logAudit({
-    userId: adminUserId,
-    actionType: AUDIT_ACTIONS.ELECTION_APPROVED,
-    moduleName: AUDIT_MODULES.APPROVAL,
-    description: `Approved election: ${before.title}`,
-    electionId,
-  }).catch(() => {});
-
+  let email_sent = false;
+  let email_error = null;
   try {
     await sendElectionApprovedEmail({
       userId: before.creator_id,
@@ -142,11 +133,14 @@ export async function approveElectionRequest(electionId, adminUserId) {
       creatorName: before.creator_name,
       electionTitle: before.title,
     });
+    email_sent = true;
   } catch (emailErr) {
-    console.error('[Email] Election approval notify failed:', emailErr?.message);
+    email_error =
+      emailErr?.message ?? 'Could not send approval email. Check Edge Function logs.';
+    console.error('[Email] Election approval notify failed:', email_error);
   }
 
-  return data;
+  return { ...data, email_sent, email_error };
 }
 
 export async function rejectElectionRequest(electionId, adminUserId, rejectionReason) {
@@ -163,14 +157,8 @@ export async function rejectElectionRequest(electionId, adminUserId, rejectionRe
     throw new Error(data.message ?? 'Could not reject election.');
   }
 
-  await logAudit({
-    userId: adminUserId,
-    actionType: AUDIT_ACTIONS.ELECTION_REJECTED,
-    moduleName: AUDIT_MODULES.APPROVAL,
-    description: `Rejected election: ${before.title}. Reason: ${reason}`,
-    electionId,
-  }).catch(() => {});
-
+  let email_sent = false;
+  let email_error = null;
   try {
     await sendElectionRejectedEmail({
       userId: before.creator_id,
@@ -179,9 +167,12 @@ export async function rejectElectionRequest(electionId, adminUserId, rejectionRe
       electionTitle: before.title,
       rejectionReason: reason,
     });
+    email_sent = true;
   } catch (emailErr) {
-    console.error('[Email] Election rejection notify failed:', emailErr?.message);
+    email_error =
+      emailErr?.message ?? 'Could not send rejection email. Check Edge Function logs.';
+    console.error('[Email] Election rejection notify failed:', email_error);
   }
 
-  return data;
+  return { ...data, email_sent, email_error };
 }

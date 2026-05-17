@@ -8,7 +8,6 @@ import {
   HiOutlineClipboardDocumentList,
   HiOutlineCog6Tooth,
   HiOutlineDocumentText,
-  HiOutlineShieldCheck,
   HiOutlineUserGroup,
   HiOutlineUsers,
   HiOutlineHandRaised,
@@ -62,7 +61,6 @@ export default function AdminDashboardPage() {
   const quickActions = [
     { label: 'Election requests', to: ROUTES.ADMIN_ELECTION_REQUESTS, icon: HiOutlineClipboardDocumentList },
     { label: 'Creator requests', to: ROUTES.ADMIN_REQUESTS, icon: HiOutlineUsers },
-    { label: 'View audit logs', to: ROUTES.ADMIN_AUDIT, icon: HiOutlineShieldCheck },
     { label: 'Manage elections', to: ROUTES.ADMIN_APPROVED_ELECTIONS, icon: HiOutlineDocumentText },
     { label: 'Finalized voters', to: ROUTES.ADMIN_FINALIZED_VOTERS, icon: HiOutlineUsers },
     { label: 'System settings', to: ROUTES.SETTINGS, icon: HiOutlineCog6Tooth },
@@ -137,7 +135,7 @@ export default function AdminDashboardPage() {
           <ElectionStatusPieChart data={charts.election_status_split} />
         </ChartPanel>
         <div className="xl:col-span-2">
-          <ChartPanel title="Daily activity trends" description="Audit log volume">
+          <ChartPanel title="Daily activity trends" description="Platform activity over time">
             <DailyActivityChart data={charts.daily_activity} />
           </ChartPanel>
         </div>

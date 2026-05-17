@@ -30,12 +30,18 @@ supabase functions deploy send-email
 
 ## Option B — Deploy from Dashboard
 
-1. Open [Edge Functions](https://supabase.com/dashboard/project/uufyjktlvhnjuiwurjyv/functions).
-2. **Create a new function** → name it exactly: `send-email`
-3. Replace the editor contents with the file:  
-   `supabase/functions/send-email/index.ts`
-4. Deploy / Save.
-5. Open the function → **Details** → turn off **Verify JWT** if the UI offers it (forgot password uses anon access).
+`send-email` is **two files**. Pasting only `index.ts` fails with:
+
+`Module not found ... emailTemplates.ts`
+
+1. Open [Edge Functions](https://supabase.com/dashboard/project/uufyjktlvhnjuiwurjyv/functions) → **send-email**.
+2. In the file tree, ensure you have **both** files (use **+ New file** if needed):
+   - `index.ts` — paste from `supabase/functions/send-email/index.ts`
+   - `emailTemplates.ts` — paste from `supabase/functions/send-email/emailTemplates.ts`
+3. **Deploy** (both files must be saved before deploy).
+4. Optional: **Details** → turn off **Verify JWT** only if forgot-password flows require anon access without a session.
+
+Do not merge the templates into `index.ts` unless you inline the whole `emailTemplates.ts` content; the import path must stay `./emailTemplates.ts`.
 
 ## After deploy
 

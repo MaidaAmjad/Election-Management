@@ -20,13 +20,46 @@ function formatInvokeError(error) {
   return error;
 }
 
+async function readEdgeFunctionErrorBody(error) {
+  const ctx = error?.context;
+  if (!ctx) return null;
+
+  try {
+    if (typeof ctx.json === 'function') {
+      const body = await ctx.json();
+      if (body?.error) return String(body.error);
+      if (body?.message) return String(body.message);
+    }
+    if (typeof ctx.text === 'function') {
+      const text = await ctx.text();
+      if (text) {
+        try {
+          const parsed = JSON.parse(text);
+          return parsed?.error ?? parsed?.message ?? text;
+        } catch {
+          return text;
+        }
+      }
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
+}
+
 export async function invokeEmailService(payload) {
   const { data, error } = await supabase.functions.invoke('send-email', {
     body: payload,
   });
 
-  if (error) throw formatInvokeError(error);
-  if (data?.error) throw new Error(data.error);
+  if (error) {
+    const detail = (await readEdgeFunctionErrorBody(error)) ?? error.message;
+    const wrapped = formatInvokeError({ ...error, message: detail });
+    throw wrapped;
+  }
+  if (data?.error) throw new Error(String(data.error));
+  if (data?.success === false && data?.error) throw new Error(String(data.error));
   return data;
 }
 

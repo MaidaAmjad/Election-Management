@@ -132,6 +132,44 @@ export function secretIdEmail(opts: {
   `);
 }
 
+export function secretIdsRegistrationEmail(opts: {
+  voterName: string;
+  electionTitle: string;
+  voteUrl: string;
+  items: { pollTitle: string; secretId: string }[];
+}) {
+  const rows = opts.items
+    .map(
+      (item) => `
+    <tr>
+      <td style="padding:12px 8px;border-bottom:1px solid #e2e8f0;color:#334155;">${item.pollTitle}</td>
+      <td style="padding:12px 8px;border-bottom:1px solid #e2e8f0;text-align:right;font-family:ui-monospace,monospace;font-size:16px;font-weight:700;color:#0f172a;letter-spacing:2px;">${item.secretId}</td>
+    </tr>`,
+    )
+    .join('');
+
+  return layout(`
+    <h1 style="margin:0 0 16px;font-size:22px;color:#0f172a;">Your Secret Voting ID${opts.items.length > 1 ? 's' : ''}</h1>
+    <p>Hello ${opts.voterName},</p>
+    <p>Thank you for registering for <strong>${opts.electionTitle}</strong>. Use the Secret ID below when voting opens — we sent this to your email so you can cast an anonymous ballot.</p>
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:20px 0;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;">
+      <tr style="background:#f8fafc;">
+        <th style="padding:10px 8px;text-align:left;font-size:12px;color:#64748b;">Poll</th>
+        <th style="padding:10px 8px;text-align:right;font-size:12px;color:#64748b;">Secret ID</th>
+      </tr>
+      ${rows}
+    </table>
+    <p><strong>How to vote:</strong></p>
+    <ol style="padding-left:20px;">
+      <li>Sign in to your voter dashboard when the election is open.</li>
+      <li>Select the poll and enter the matching Secret ID when prompted.</li>
+      <li>Choose your candidate and confirm your vote.</li>
+    </ol>
+    ${button(opts.voteUrl, 'Open Voter Dashboard')}
+    <p style="background:#fff7ed;border-left:4px solid #f59e0b;padding:12px 16px;border-radius:4px;font-size:13px;"><strong>Keep this email private.</strong> Anyone with your Secret ID could vote in your place. ${BRAND} will never ask you to share it.</p>
+  `);
+}
+
 export function electionReminderEmail(opts: {
   electionTitle: string;
   startTime: string;

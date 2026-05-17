@@ -172,6 +172,140 @@ export async function sendSecretIdEmail({ secretRowId }) {
   });
 }
 
+function normalizeSecretRowIds(secretRowIds) {
+  if (!secretRowIds) return [];
+  if (Array.isArray(secretRowIds)) {
+    return secretRowIds.filter(Boolean);
+  }
+  if (typeof secretRowIds === 'string') {
+    try {
+      const parsed = JSON.parse(secretRowIds);
+      return Array.isArray(parsed) ? parsed.filter(Boolean) : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
+
+/** Email all secret IDs for the current voter after election registration. */
+export async function sendSecretIdsOnRegistration({
+  electionId,
+  secretRowIds = null,
+  secretIdsIssued = null,
+}) {
+  if (secretIdsIssued === 0) {
+    return {
+      success: true,
+      sent: 0,
+      message:
+        'Registered successfully. Secret IDs will be emailed once the election has voting polls (after the creator finishes setup).',
+    };
+  }
+
+  try {
+    return await invokeEmailService({
+      action: 'secret_id_registration_notify',
+      election_id: electionId,
+    });
+  } catch (err) {
+    const message = err?.message ?? '';
+    if (!message.includes('Unknown action')) throw err;
+    return sendSecretIdsOnRegistrationFallback({
+      electionId,
+      secretRowIds,
+    });
+  }
+}
+
+/** Works with older send-email deployments (before secret_id_registration_notify). */
+async function sendSecretIdsOnRegistrationFallback({ electionId, secretRowIds }) {
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+  if (userError || !user) throw new Error('Authentication required');
+
+  const fromRegistration = normalizeSecretRowIds(secretRowIds);
+  let rowIds = fromRegistration;
+
+  if (!rowIds.length) {
+    const { data: issued, error: issueError } = await supabase.rpc(
+      'issue_secret_ids_for_voter',
+      { p_election_id: electionId, p_voter_id: user.id },
+    );
+    if (issueError) throw issueError;
+    if (issued?.success === false) {
+      throw new Error(
+        issued?.message ??
+          'Could not create Secret IDs. Run migrations 028/029 in Supabase SQL Editor.',
+      );
+    }
+    rowIds = normalizeSecretRowIds(issued?.secret_row_ids);
+  }
+
+  if (!rowIds.length) {
+    return {
+      success: true,
+      sent: 0,
+      message:
+        'Registered successfully. Secret IDs will be emailed once the election has voting polls (after the creator finishes setup).',
+    };
+  }
+
+  const { data: pendingRows, error: rowsError } = await supabase
+    .from('secret_ids')
+    .select('id, email_status')
+    .in('id', rowIds)
+    .eq('is_active', true);
+
+  if (rowsError) throw rowsError;
+
+  const toSend = (pendingRows ?? []).filter((row) =>
+    ['Pending', 'Failed'].includes(row.email_status),
+  );
+
+  if (!toSend.length) {
+    return {
+      success: true,
+      sent: 0,
+      message:
+        'Registered successfully. Your Secret IDs were already emailed or are not ready yet.',
+    };
+  }
+
+  let sent = 0;
+  let failed = 0;
+  const errors = [];
+
+  for (const row of toSend) {
+    try {
+      const result = await invokeEmailService({
+        action: 'secret_id_send',
+        secret_row_id: row.id,
+      });
+      sent += result?.sent ?? 0;
+      failed += result?.failed ?? 0;
+    } catch (sendErr) {
+      failed += 1;
+      errors.push(sendErr?.message ?? 'Send failed');
+    }
+  }
+
+  if (sent === 0 && failed > 0) {
+    throw new Error(
+      errors[0] ??
+        'Could not send Secret ID email. Redeploy the send-email Edge Function (see supabase/DEPLOY_SEND_EMAIL.md) and check RESEND_API_KEY.',
+    );
+  }
+
+  return {
+    success: true,
+    sent,
+    failed,
+  };
+}
+
 export async function sendAllSecretIdEmails({ electionId }) {
   return invokeEmailService({
     action: 'secret_id_send_all',

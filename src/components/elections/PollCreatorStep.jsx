@@ -2,6 +2,7 @@ import { HiOutlinePlus, HiOutlineXMark } from 'react-icons/hi2';
 import Button from '../ui/Button';
 import Input from '../ui/Input';
 import Toggle from '../ui/Toggle';
+import { getDisplayPolls, isStagingPoll } from '../../utils/pollCandidatesLoader';
 import { emptyPoll } from '../../utils/electionValidation';
 
 function CandidateChip({ candidate, selected, onToggle, disabled }) {
@@ -151,23 +152,23 @@ export default function PollCreatorStep({
   errors = {},
   readOnly = false,
 }) {
-  const displayPolls = polls.filter((p) => !p.isStaging);
+  const displayPolls = getDisplayPolls(polls);
 
   function updatePoll(index, patch) {
     const real = [...displayPolls];
     real[index] = { ...real[index], ...patch };
-    const staging = polls.filter((p) => p.isStaging);
+    const staging = polls.filter((p) => isStagingPoll(p));
     onChange([...staging, ...real]);
   }
 
   function addPoll() {
-    onChange([...polls.filter((p) => p.isStaging), ...displayPolls, emptyPoll()]);
+    onChange([...polls.filter((p) => isStagingPoll(p)), ...displayPolls, emptyPoll()]);
   }
 
   function removePoll(index) {
     if (displayPolls.length <= 1) return;
     const real = displayPolls.filter((_, i) => i !== index);
-    onChange([...polls.filter((p) => p.isStaging), ...real]);
+    onChange([...polls.filter((p) => isStagingPoll(p)), ...real]);
   }
 
   const pollErrors = errors.polls ?? {};

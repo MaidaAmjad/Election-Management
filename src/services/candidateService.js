@@ -1,6 +1,4 @@
 import { supabase } from '../supabase/supabase';
-import { logAudit } from './auditLogService';
-import { AUDIT_ACTIONS, AUDIT_MODULES } from '../utils/auditConstants';
 import {
   deleteCandidatePhotoByUrl,
   uploadCandidatePhoto,
@@ -134,13 +132,6 @@ export async function createCandidate(
   }
 
   const { elections, polls, ...candidate } = data;
-  await logAudit({
-    actionType: AUDIT_ACTIONS.CANDIDATE_ADDED,
-    moduleName: AUDIT_MODULES.CANDIDATE,
-    description: `Candidate added: ${name}`,
-    electionId: election_id,
-    userId: creatorId,
-  }).catch(() => {});
   return mapCandidate({ ...candidate, elections, polls });
 }
 
@@ -188,13 +179,6 @@ export async function updateCandidate(
   if (error) throw error;
 
   const { elections, polls, ...candidate } = data;
-  await logAudit({
-    actionType: AUDIT_ACTIONS.CANDIDATE_EDITED,
-    moduleName: AUDIT_MODULES.CANDIDATE,
-    description: `Candidate updated: ${name}`,
-    electionId: election_id,
-    userId: creatorId,
-  }).catch(() => {});
   return mapCandidate({ ...candidate, elections, polls });
 }
 
@@ -208,14 +192,6 @@ export async function deleteCandidate(candidateId, creatorId) {
     .eq('creator_id', creatorId);
 
   if (error) throw error;
-
-  await logAudit({
-    actionType: AUDIT_ACTIONS.CANDIDATE_DELETED,
-    moduleName: AUDIT_MODULES.CANDIDATE,
-    description: `Candidate deleted: ${existing?.name ?? candidateId}`,
-    electionId: existing?.election_id,
-    userId: creatorId,
-  }).catch(() => {});
 
   if (existing?.photo_url) {
     await deleteCandidatePhotoByUrl(existing.photo_url).catch(() => {});

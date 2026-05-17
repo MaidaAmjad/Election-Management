@@ -58,8 +58,13 @@ export default function ElectionRequestsPage() {
     setSubmitting(true);
     setActionLoadingId(approveTarget.id);
     try {
-      await approveElectionRequest(approveTarget.id, user.id);
-      toast.success('Election approved. Creator has been notified by email.');
+      const result = await approveElectionRequest(approveTarget.id, user.id);
+      if (result.email_sent) {
+        toast.success('Election approved. Creator has been notified by email.');
+      } else {
+        toast.success('Election approved.');
+        toast.error(result.email_error ?? 'Approval email was not sent.');
+      }
       setApproveTarget(null);
       setSelected(null);
       refresh();
@@ -76,8 +81,13 @@ export default function ElectionRequestsPage() {
     setSubmitting(true);
     setActionLoadingId(rejectTarget.id);
     try {
-      await rejectElectionRequest(rejectTarget.id, user.id, reason);
-      toast.success('Election rejected. Creator has been notified by email.');
+      const result = await rejectElectionRequest(rejectTarget.id, user.id, reason);
+      if (result.email_sent) {
+        toast.success('Election rejected. Creator has been notified by email.');
+      } else {
+        toast.success('Election rejected.');
+        toast.error(result.email_error ?? 'Rejection email was not sent.');
+      }
       setRejectTarget(null);
       setSelected(null);
       refresh();

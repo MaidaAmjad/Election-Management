@@ -8,7 +8,6 @@ const LABELS = {
   elections: 'Elections',
   candidates: 'Candidates',
   results: 'Results',
-  audit: 'Audit',
   notifications: 'Notifications',
   requests: 'Requests',
   'secret-ids': 'Secret IDs',

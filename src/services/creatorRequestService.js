@@ -1,8 +1,6 @@
 import { supabase } from '../supabase/supabase';
 import { USER_ROLES } from '../utils/constants';
 import { CREATOR_REQUEST_STATUS } from '../utils/adminConstants';
-import { logAudit } from './auditLogService';
-import { AUDIT_ACTIONS, AUDIT_MODULES } from '../utils/auditConstants';
 import {
   sendCreatorApprovedEmail,
   sendCreatorRejectedEmail,
@@ -68,13 +66,6 @@ export async function createCreatorRequest({
     .single();
 
   if (error) throw error;
-
-  await logAudit({
-    userId,
-    actionType: AUDIT_ACTIONS.REQUEST_SUBMITTED,
-    moduleName: AUDIT_MODULES.APPROVAL,
-    description: `Election creator request submitted for ${organization.trim()}.`,
-  });
 
   const [mapped] = await attachProfiles([data]);
   return mapped;
@@ -151,25 +142,23 @@ export async function approveCreatorRequest(requestId, adminUserId) {
 
   await updateProfileRole(request.user_id, USER_ROLES.ELECTION_CREATOR);
 
-  await logAudit({
-    userId: adminUserId,
-    actionType: AUDIT_ACTIONS.REQUEST_APPROVED,
-    moduleName: AUDIT_MODULES.APPROVAL,
-    description: `Approved election creator request for ${request.creator_name}.`,
-  });
-
+  let email_sent = false;
+  let email_error = null;
   try {
     await sendCreatorApprovedEmail({
       userId: request.user_id,
       to: request.email,
       creatorName: request.creator_name,
     });
+    email_sent = true;
   } catch (emailError) {
-    console.error('[Email] Approval notification failed:', emailError.message);
+    email_error =
+      emailError?.message ?? 'Could not send approval email. Check Edge Function logs.';
+    console.error('[Email] Approval notification failed:', email_error);
   }
 
   const [mapped] = await attachProfiles([data]);
-  return mapped;
+  return { ...mapped, email_sent, email_error };
 }
 
 export async function rejectCreatorRequest(requestId, adminUserId, rejectionReason) {
@@ -193,13 +182,8 @@ export async function rejectCreatorRequest(requestId, adminUserId, rejectionReas
 
   if (error) throw error;
 
-  await logAudit({
-    userId: adminUserId,
-    actionType: AUDIT_ACTIONS.REQUEST_REJECTED,
-    moduleName: AUDIT_MODULES.APPROVAL,
-    description: `Rejected election creator request for ${request.creator_name}. Reason: ${reason}`,
-  });
-
+  let email_sent = false;
+  let email_error = null;
   try {
     await sendCreatorRejectedEmail({
       userId: request.user_id,
@@ -207,12 +191,15 @@ export async function rejectCreatorRequest(requestId, adminUserId, rejectionReas
       creatorName: request.creator_name,
       rejectionReason: reason,
     });
+    email_sent = true;
   } catch (emailError) {
-    console.error('[Email] Rejection notification failed:', emailError.message);
+    email_error =
+      emailError?.message ?? 'Could not send rejection email. Check Edge Function logs.';
+    console.error('[Email] Rejection notification failed:', email_error);
   }
 
   const [mapped] = await attachProfiles([data]);
-  return mapped;
+  return { ...mapped, email_sent, email_error };
 }
 
 export function isCreatorApproved(request) {

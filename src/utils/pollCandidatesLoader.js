@@ -56,7 +56,7 @@ function attachCandidatesToPolls(polls, allCandidates, pollOptions) {
     if (candidate) optionsByPollId[row.poll_id].push(candidate);
   }
 
-  const stagingPoll = polls.find((p) => p.isStaging) ?? polls[0];
+  const stagingPoll = polls.find((p) => isStagingPoll(p)) ?? polls[0];
   const stagingId = stagingPoll?.id;
 
   return polls.map((poll) => {
@@ -68,7 +68,7 @@ function attachCandidatesToPolls(polls, allCandidates, pollOptions) {
         : [];
 
     let candidates = fromOptions.length > 0 ? fromOptions : fromPollId;
-    if (poll.isStaging) {
+    if (isStagingPoll(poll)) {
       candidates = poolOnStaging.length > 0 ? poolOnStaging : fromPollId;
     }
 
@@ -83,7 +83,7 @@ function attachCandidatesToPolls(polls, allCandidates, pollOptions) {
 /** Loads polls, candidate pool, and poll option assignments without PostgREST embeds. */
 export async function loadPollsWithCandidates(electionId) {
   const polls = await fetchPollsForElection(electionId);
-  const nonStagingIds = polls.filter((p) => !p.isStaging).map((p) => p.id);
+  const nonStagingIds = polls.filter((p) => !isStagingPoll(p)).map((p) => p.id);
   const [allCandidates, pollOptions] = await Promise.all([
     fetchCandidatesForElection(electionId),
     fetchPollOptions(nonStagingIds),
@@ -91,10 +91,23 @@ export async function loadPollsWithCandidates(electionId) {
   return attachCandidatesToPolls(polls, allCandidates, pollOptions);
 }
 
+/** Candidate pool poll — not shown to voters as a ballot question. */
+export function isStagingPoll(poll) {
+  if (!poll) return false;
+  if (poll.isStaging || poll.is_staging) return true;
+  const title = (poll.title ?? '').trim();
+  const desc = (poll.description ?? '').toLowerCase();
+  return (
+    title === 'Ballot 1' &&
+    (desc.includes('candidate pool') || desc.includes('primary ballot'))
+  );
+}
+
 export function getStagingPoll(polls) {
-  return polls.find((p) => p.isStaging) ?? polls[0] ?? null;
+  const list = polls ?? [];
+  return list.find((p) => isStagingPoll(p)) ?? list[0] ?? null;
 }
 
 export function getDisplayPolls(polls) {
-  return polls.filter((p) => !p.isStaging);
+  return (polls ?? []).filter((p) => !isStagingPoll(p));
 }

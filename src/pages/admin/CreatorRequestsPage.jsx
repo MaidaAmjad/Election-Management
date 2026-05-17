@@ -43,8 +43,13 @@ export default function CreatorRequestsPage() {
     setSubmitting(true);
     setActionLoadingId(approveTarget.id);
     try {
-      await approveCreatorRequest(approveTarget.id, user.id);
-      toast.success('Request approved. Creator has been notified by email.');
+      const result = await approveCreatorRequest(approveTarget.id, user.id);
+      if (result.email_sent) {
+        toast.success('Request approved. Creator has been notified by email.');
+      } else {
+        toast.success('Request approved.');
+        toast.error(result.email_error ?? 'Approval email was not sent.');
+      }
       setApproveTarget(null);
       refresh();
     } catch (err) {
@@ -60,8 +65,13 @@ export default function CreatorRequestsPage() {
     setSubmitting(true);
     setActionLoadingId(rejectTarget.id);
     try {
-      await rejectCreatorRequest(rejectTarget.id, user.id, reason);
-      toast.success('Request rejected. Creator has been notified by email.');
+      const result = await rejectCreatorRequest(rejectTarget.id, user.id, reason);
+      if (result.email_sent) {
+        toast.success('Request rejected. Creator has been notified by email.');
+      } else {
+        toast.success('Request rejected.');
+        toast.error(result.email_error ?? 'Rejection email was not sent.');
+      }
       setRejectTarget(null);
       refresh();
     } catch (err) {

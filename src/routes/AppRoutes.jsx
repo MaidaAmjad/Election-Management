@@ -25,7 +25,6 @@ import AdminDashboardPage from '../pages/dashboard/admin/AdminDashboardPage';
 import CreatorRequestsPage from '../pages/admin/CreatorRequestsPage';
 import ElectionRequestsPage from '../pages/admin/ElectionRequestsPage';
 import ApprovedElectionsPage from '../pages/admin/ApprovedElectionsPage';
-import ActivityLogsPage from '../pages/admin/ActivityLogsPage';
 import CreatorApprovalStatusPage from '../pages/creator/CreatorApprovalStatusPage';
 import CreatorApprovalRoute from '../components/routing/CreatorApprovalRoute';
 import ElectionListPage from '../pages/elections/ElectionListPage';
@@ -54,9 +53,6 @@ import CreatorResultsHistoryPage from '../pages/results/CreatorResultsHistoryPag
 import CreatorLiveResultsPage from '../pages/results/CreatorLiveResultsPage';
 import VoterResultsHistoryPage from '../pages/results/VoterResultsHistoryPage';
 import VoterLiveResultsPage from '../pages/results/VoterLiveResultsPage';
-import AdminAuditPage from '../pages/audit/AdminAuditPage';
-import CreatorAuditPage from '../pages/audit/CreatorAuditPage';
-import VoterAuditPage from '../pages/audit/VoterAuditPage';
 import NotificationCenterPage from '../pages/notifications/NotificationCenterPage';
 import VerifyEmail from '../pages/VerifyEmail';
 import Unauthorized from '../pages/Unauthorized';
@@ -159,7 +155,6 @@ export default function AppRoutes() {
           <Route path="requests" element={<CreatorRequestsPage />} />
           <Route path="election-requests" element={<ElectionRequestsPage />} />
           <Route path="approved-elections" element={<ApprovedElectionsPage />} />
-          <Route path="activity-logs" element={<ActivityLogsPage />} />
           <Route
             path="finalized-voters"
             element={<AdminFinalizedVotersPage />}
@@ -172,7 +167,6 @@ export default function AppRoutes() {
           <Route path="secret-ids/:id" element={<AdminSecretIdElectionPage />} />
           <Route path="results" element={<AdminResultsHistoryPage />} />
           <Route path="results/:id" element={<AdminLiveResultsPage />} />
-          <Route path="audit" element={<AdminAuditPage />} />
           <Route path="notifications" element={<NotificationCenterPage />} />
         </Route>
 
@@ -218,7 +212,6 @@ export default function AppRoutes() {
             />
             <Route path="results" element={<CreatorResultsHistoryPage />} />
             <Route path="results/:id" element={<CreatorLiveResultsPage />} />
-            <Route path="audit" element={<CreatorAuditPage />} />
             <Route path="notifications" element={<NotificationCenterPage />} />
           </Route>
         </Route>
@@ -250,7 +243,6 @@ export default function AppRoutes() {
           <Route path="voting-history" element={<MyVotingHistoryPage />} />
           <Route path="results" element={<VoterResultsHistoryPage />} />
           <Route path="results/:id" element={<VoterLiveResultsPage />} />
-          <Route path="audit" element={<VoterAuditPage />} />
           <Route path="notifications" element={<NotificationCenterPage />} />
         </Route>
 

@@ -10,13 +10,9 @@ import StatCard from '../../components/admin/StatCard';
 import Spinner from '../../components/ui/Spinner';
 import Button from '../../components/ui/Button';
 import { fetchCreatorRequestStats } from '../../services/creatorRequestService';
-import { logActivity } from '../../services/activityLogService';
-import { ACTIVITY_ACTIONS } from '../../utils/adminConstants';
 import { ROUTES } from '../../utils/constants';
-import { useAuth } from '../../hooks/useAuth';
 
 export default function AdminOverviewPage() {
-  const { user } = useAuth();
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -26,11 +22,6 @@ export default function AdminOverviewPage() {
       try {
         const data = await fetchCreatorRequestStats();
         setStats(data);
-        await logActivity({
-          userId: user?.id,
-          action: ACTIVITY_ACTIONS.DASHBOARD_ACTION,
-          description: 'Viewed admin approval dashboard overview.',
-        });
       } catch (err) {
         setError(err.message ?? 'Failed to load dashboard stats.');
       } finally {
@@ -38,8 +29,8 @@ export default function AdminOverviewPage() {
       }
     }
 
-    if (user?.id) load();
-  }, [user?.id]);
+    load();
+  }, []);
 
   if (loading) {
     return (
@@ -99,9 +90,6 @@ export default function AdminOverviewPage() {
         </Link>
         <Link to={ROUTES.ADMIN_APPROVED_ELECTIONS}>
           <Button variant="secondary">View approved elections</Button>
-        </Link>
-        <Link to={ROUTES.ADMIN_ACTIVITY_LOGS}>
-          <Button variant="secondary">Activity logs</Button>
         </Link>
       </div>
     </div>

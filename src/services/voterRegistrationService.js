@@ -1,6 +1,5 @@
 import { supabase } from '../supabase/supabase';
-import { logAudit } from './auditLogService';
-import { AUDIT_ACTIONS, AUDIT_MODULES } from '../utils/auditConstants';
+import { sendSecretIdsOnRegistration } from './notificationService';
 import { VOTER_REGISTRATION_STATUS } from '../utils/voterRegistrationConstants';
 
 const ACTIVE_STATUSES = [
@@ -138,16 +137,27 @@ export async function joinElection(electionId) {
   if (error) throw error;
 
   if (data?.success) {
-    const action =
-      data?.status === 'Waitlisted'
-        ? AUDIT_ACTIONS.WAITLIST_ADDED
-        : AUDIT_ACTIONS.VOTER_JOINED;
-    await logAudit({
-      actionType: action,
-      moduleName: AUDIT_MODULES.REGISTRATION,
-      description: data?.message ?? 'Voter registration updated.',
-      electionId,
-    }).catch(() => {});
+    if (data?.code === 'REGISTERED' || data?.status === 'Registered') {
+      try {
+        const emailResult = await sendSecretIdsOnRegistration({
+          electionId,
+          secretRowIds: data?.secret_row_ids,
+          secretIdsIssued: data?.secret_ids_issued ?? null,
+        });
+        return {
+          ...data,
+          secret_email_sent: (emailResult?.sent ?? 0) > 0,
+          secret_email_message: emailResult?.message ?? null,
+        };
+      } catch (emailErr) {
+        return {
+          ...data,
+          secret_email_sent: false,
+          secret_email_error:
+            emailErr.message ?? 'Could not send Secret ID email.',
+        };
+      }
+    }
   }
 
   return data;

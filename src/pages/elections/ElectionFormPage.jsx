@@ -23,11 +23,12 @@ import ElectionApprovalStatusBadge from '../../components/elections/ElectionAppr
 import { ROUTES } from '../../utils/constants';
 import { ELECTION_STATUS } from '../../utils/electionConstants';
 import { isElectionEditable } from '../../utils/electionStatus';
-import { getStagingPoll } from '../../utils/pollCandidatesLoader';
+import { getDisplayPolls, getStagingPoll } from '../../utils/pollCandidatesLoader';
 import {
   emptyElectionForm,
   emptyPoll,
   electionToForm,
+  getValidationErrorMessage,
   hasValidationErrors,
   validateElectionForm,
   validateStagingCandidates,
@@ -188,7 +189,7 @@ export default function ElectionFormPage() {
       const full = await refreshFormFromServer();
       const loaded = full.polls ?? [];
       const staging = getStagingPoll(loaded);
-      const hasDisplayPoll = loaded.some((p) => !p.isStaging);
+      const hasDisplayPoll = getDisplayPolls(loaded).length > 0;
       setForm((prev) => {
         const base = electionToForm(full, loaded);
         if (hasDisplayPoll) return base;
@@ -206,11 +207,30 @@ export default function ElectionFormPage() {
     }
   }
 
-  function handlePublishClick() {
-    const validationErrors = validateElectionForm(form, { isPublish: true });
+  async function handlePublishClick() {
+    setSaving(true);
+    let formToValidate = form;
+    try {
+      if (electionId) {
+        const saved = await updateElectionDraft(electionId, user.id, form);
+        formToValidate = electionToForm(saved, saved.polls);
+        setForm(formToValidate);
+      }
+    } catch (err) {
+      toast.error(err.message ?? 'Failed to save before submitting.');
+      setSaving(false);
+      return;
+    } finally {
+      setSaving(false);
+    }
+
+    const validationErrors = validateElectionForm(formToValidate, { isPublish: true });
     setErrors(validationErrors);
     if (hasValidationErrors(validationErrors)) {
-      toast.error('Complete all polls before submitting.');
+      toast.error(
+        getValidationErrorMessage(validationErrors) ??
+          'Complete all polls before submitting.',
+      );
       return;
     }
     setPublishOpen(true);

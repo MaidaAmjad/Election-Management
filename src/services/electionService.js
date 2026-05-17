@@ -1,10 +1,12 @@
 import { supabase } from '../supabase/supabase';
-import { logAudit } from './auditLogService';
-import { AUDIT_ACTIONS, AUDIT_MODULES } from '../utils/auditConstants';
 import { ELECTION_STATUS } from '../utils/electionConstants';
 import { fromDatetimeLocalValue } from '../utils/electionValidation';
 import { getEffectiveStatus } from '../utils/electionStatus';
-import { loadPollsWithCandidates } from '../utils/pollCandidatesLoader';
+import {
+  getDisplayPolls,
+  getStagingPoll,
+  loadPollsWithCandidates,
+} from '../utils/pollCandidatesLoader';
 
 function mapElectionRow(row, polls = []) {
   if (!row) return null;
@@ -59,7 +61,7 @@ function buildElectionPayload(form, creatorId, status) {
 }
 
 async function syncPollOptions(polls, idMap) {
-  const realPolls = polls.filter((p) => !p.isStaging && p.title?.trim());
+  const realPolls = getDisplayPolls(polls).filter((p) => p.title?.trim());
 
   for (const poll of realPolls) {
     const pollId = idMap.get(poll.id) ?? poll.id;
@@ -92,12 +94,18 @@ async function syncPollOptions(polls, idMap) {
 async function syncPolls(electionId, polls) {
   const { data: existingPolls, error: fetchError } = await supabase
     .from('polls')
-    .select('id, is_staging')
+    .select('id, is_staging, title, description')
     .eq('election_id', electionId);
 
   if (fetchError) throw fetchError;
 
-  const stagingPoll = (existingPolls ?? []).find((p) => p.is_staging);
+  const stagingPoll =
+    (existingPolls ?? []).find((p) => p.is_staging) ??
+    (existingPolls ?? []).find(
+      (p) =>
+        p.title === 'Ballot 1' &&
+        (p.description ?? '').toLowerCase().includes('ballot'),
+    );
   const stagingId = stagingPoll?.id;
 
   const existingIds = new Set((existingPolls ?? []).map((p) => p.id));
@@ -116,8 +124,17 @@ async function syncPolls(electionId, polls) {
   const idMap = new Map();
 
   for (const poll of polls) {
-    if (poll.isStaging) {
+    if (poll.isStaging || poll.is_staging) {
       if (poll.id) idMap.set(poll.id, poll.id);
+      continue;
+    }
+    if (
+      stagingId &&
+      poll.id === stagingId &&
+      poll.title === 'Ballot 1' &&
+      !(poll.optionCandidateIds?.length)
+    ) {
+      idMap.set(poll.id, poll.id);
       continue;
     }
     if (!poll.title?.trim()) continue;
@@ -175,14 +192,14 @@ export async function ensureStagingPoll(electionId) {
     .single();
 
   if (error) throw error;
-  return { ...data, candidates: [] };
+  return { ...data, candidates: [], isStaging: true, is_staging: true };
 }
 
 export async function assertElectionReadyToPublish(electionId, creatorId) {
   const election = await fetchElectionById(electionId, creatorId);
   const polls = election.polls ?? [];
-  const staging = polls.find((p) => p.isStaging) ?? polls[0];
-  const displayPolls = polls.filter((p) => !p.isStaging);
+  const staging = getStagingPoll(polls);
+  const displayPolls = getDisplayPolls(polls);
 
   if (!(staging?.candidates?.length)) {
     throw new Error('Add at least one candidate before publishing.');
@@ -218,13 +235,6 @@ export async function createElectionDraft(creatorId, form) {
   if (error) throw error;
 
   await syncPolls(data.id, form.polls ?? []);
-  await logAudit({
-    actionType: AUDIT_ACTIONS.ELECTION_CREATED,
-    moduleName: AUDIT_MODULES.ELECTION,
-    description: `Draft election created: ${form.title}`,
-    electionId: data.id,
-    userId: creatorId,
-  }).catch(() => {});
   return fetchElectionById(data.id, creatorId);
 }
 
@@ -239,13 +249,6 @@ export async function updateElectionDraft(electionId, creatorId, form) {
   if (error) throw error;
 
   await syncPolls(electionId, form.polls ?? []);
-  await logAudit({
-    actionType: AUDIT_ACTIONS.ELECTION_UPDATED,
-    moduleName: AUDIT_MODULES.ELECTION,
-    description: `Election draft updated: ${form.title}`,
-    electionId,
-    userId: creatorId,
-  }).catch(() => {});
   return fetchElectionById(electionId, creatorId);
 }
 
@@ -272,12 +275,4 @@ export async function deleteElectionDraft(electionId, creatorId) {
     .eq('status', ELECTION_STATUS.DRAFT);
 
   if (error) throw error;
-
-  await logAudit({
-    actionType: AUDIT_ACTIONS.ELECTION_DELETED,
-    moduleName: AUDIT_MODULES.ELECTION,
-    description: `Draft election deleted`,
-    electionId,
-    userId: creatorId,
-  }).catch(() => {});
 }
