@@ -20,20 +20,21 @@ import VerifyMfa from '../pages/VerifyMfa';
 import ForgotPassword from '../pages/ForgotPassword';
 import ResetPassword from '../pages/ResetPassword';
 import Settings from '../pages/Settings';
-import AdminOverviewPage from '../pages/admin/AdminOverviewPage';
+import AdminDashboardPage from '../pages/dashboard/admin/AdminDashboardPage';
 import CreatorRequestsPage from '../pages/admin/CreatorRequestsPage';
 import ApprovedElectionsPage from '../pages/admin/ApprovedElectionsPage';
 import ActivityLogsPage from '../pages/admin/ActivityLogsPage';
 import CreatorApprovalStatusPage from '../pages/creator/CreatorApprovalStatusPage';
 import CreatorApprovalRoute from '../components/routing/CreatorApprovalRoute';
 import ElectionListPage from '../pages/elections/ElectionListPage';
+import CreatorDashboardPage from '../pages/dashboard/creator/CreatorDashboardPage';
+import VoterDashboardPage from '../pages/dashboard/voter/VoterDashboardPage';
 import ElectionFormPage from '../pages/elections/ElectionFormPage';
 import ElectionViewPage from '../pages/elections/ElectionViewPage';
 import CandidateDashboardPage from '../pages/candidates/CandidateDashboardPage';
 import CandidateListPage from '../pages/candidates/CandidateListPage';
 import CandidateFormPage from '../pages/candidates/CandidateFormPage';
 import CandidateDetailPage from '../pages/candidates/CandidateDetailPage';
-import VoterDashboard from '../pages/VoterDashboard';
 import MyJoinedElectionsPage from '../pages/voters/MyJoinedElectionsPage';
 import AdminFinalizedVotersPage from '../pages/finalization/AdminFinalizedVotersPage';
 import AdminFinalizationDetailPage from '../pages/finalization/AdminFinalizationDetailPage';
@@ -155,7 +156,7 @@ export default function AppRoutes() {
             </ProtectedRoute>
           }
         >
-          <Route index element={<AdminOverviewPage />} />
+          <Route index element={<AdminDashboardPage />} />
           <Route path="requests" element={<CreatorRequestsPage />} />
           <Route path="approved-elections" element={<ApprovedElectionsPage />} />
           <Route path="activity-logs" element={<ActivityLogsPage />} />
@@ -193,7 +194,8 @@ export default function AppRoutes() {
             element={<CreatorApprovalStatusPage variant="rejected" />}
           />
           <Route element={<CreatorApprovalRoute />}>
-            <Route index element={<ElectionListPage />} />
+            <Route index element={<CreatorDashboardPage />} />
+            <Route path="elections" element={<ElectionListPage />} />
             <Route path="elections/new" element={<ElectionFormPage />} />
             <Route path="elections/:id" element={<ElectionViewPage />} />
             <Route path="elections/:id/edit" element={<ElectionFormPage />} />
@@ -237,7 +239,7 @@ export default function AppRoutes() {
             </ProtectedRoute>
           }
         >
-          <Route index element={<VoterDashboard />} />
+          <Route index element={<VoterDashboardPage />} />
           <Route
             path="joined-elections"
             element={<MyJoinedElectionsPage />}

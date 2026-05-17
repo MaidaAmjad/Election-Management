@@ -1,1 +1,1 @@
-export { default } from './voters/VoterDashboardHome';
+export { default } from './dashboard/voter/VoterDashboardPage';

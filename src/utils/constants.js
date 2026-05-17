@@ -32,6 +32,7 @@ export const ROUTES = {
   CREATOR_SECRET_IDS: '/creator-dashboard/secret-ids',
   VOTER_SECRET_IDS: '/voter-dashboard/secret-ids',
   CREATOR_DASHBOARD: '/creator-dashboard',
+  CREATOR_ELECTIONS: '/creator-dashboard/elections',
   CREATOR_CANDIDATES: '/creator-dashboard/candidates',
   CREATOR_PENDING: '/creator-dashboard/pending',
   CREATOR_REJECTED: '/creator-dashboard/rejected',
