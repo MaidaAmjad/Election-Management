@@ -19,6 +19,8 @@ import { PUBLIC_ELECTION_STATUS } from '../../utils/publicElectionConstants';
 import { computeRegistrationStats } from '../../utils/voterRegistrationValidation';
 import { useRegistrationLockMonitor } from '../../hooks/useRegistrationLockMonitor';
 import RegistrationStatusBadge from '../../components/finalization/RegistrationStatusBadge';
+import PublicElectionResultsSection from '../../components/public/PublicElectionResultsSection';
+import { usePublicElectionLiveResults } from '../../hooks/usePublicElectionLiveResults';
 
 export default function PublicElectionDetailPage() {
   const { id } = useParams();
@@ -34,6 +36,13 @@ export default function PublicElectionDetailPage() {
   } = usePublicElectionDetail(id, user?.id);
 
   useRegistrationLockMonitor(id, { enabled: Boolean(election) });
+
+  const {
+    polls: resultsPolls,
+    loading: resultsLoading,
+    error: resultsError,
+    enabled: showResults,
+  } = usePublicElectionLiveResults(id, election?.publicStatus);
 
   if (loading) {
     return (
@@ -154,6 +163,14 @@ export default function PublicElectionDetailPage() {
                 className="sm:col-span-2"
               />
             </section>
+
+            <PublicElectionResultsSection
+              polls={resultsPolls}
+              loading={resultsLoading}
+              error={resultsError}
+              publicStatus={election.publicStatus}
+              enabled={showResults}
+            />
 
             <div className="border-t border-slate-200 pt-6">
               <JoinElectionButton
