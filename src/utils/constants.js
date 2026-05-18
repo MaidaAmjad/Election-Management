@@ -6,6 +6,7 @@ export const ROUTES = {
   ABOUT: '/about',
   CONTACT: '/contact',
   CHOOSE_ROLE: '/choose-role',
+  ADMIN_LOGIN: '/admin/login',
   LOGIN: '/login',
   SIGNUP: '/signup',
   FORGOT_PASSWORD: '/forgot-password',

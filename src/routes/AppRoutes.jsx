@@ -15,6 +15,7 @@ import AboutPage from '../pages/public/AboutPage';
 import ContactPage from '../pages/public/ContactPage';
 import RoleSelection from '../pages/RoleSelection';
 import Login from '../pages/Login';
+import AdminLogin from '../pages/AdminLogin';
 import Signup from '../pages/Signup';
 import VerifyMfa from '../pages/VerifyMfa';
 import ForgotPassword from '../pages/ForgotPassword';
@@ -97,6 +98,14 @@ export default function AppRoutes() {
         </Route>
 
         <Route element={<AuthLayout />}>
+          <Route
+            path={ROUTES.ADMIN_LOGIN}
+            element={
+              <AuthFormRoute>
+                <AdminLogin />
+              </AuthFormRoute>
+            }
+          />
           <Route
             path={ROUTES.LOGIN}
             element={

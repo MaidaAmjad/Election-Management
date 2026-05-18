@@ -325,7 +325,14 @@ export default function Login() {
           <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
             <p className="font-medium">First time signing in as Super Admin?</p>
             <p className="mt-1 text-amber-800">
-              If these credentials do not work, use{' '}
+              Bookmark{' '}
+              <Link
+                to={ROUTES.ADMIN_LOGIN}
+                className="font-semibold underline hover:text-amber-950"
+              >
+                /admin/login
+              </Link>{' '}
+              on each device. If these credentials do not work, use{' '}
               <Link
                 to={ROUTES.FORGOT_PASSWORD}
                 className="font-semibold underline hover:text-amber-950"

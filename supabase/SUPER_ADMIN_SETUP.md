@@ -22,7 +22,7 @@ SUPER_ADMIN_PASSWORD=your-chosen-password
 npm run setup:super-admin
 ```
 
-4. Sign in: **Choose role** → **Super Admin** → **Login** with that email and password.
+4. Sign in at **`/admin/login`** (e.g. `https://your-app.vercel.app/admin/login`) with that email and password.
 
 ## Option B — Supabase Dashboard only
 
@@ -35,7 +35,7 @@ npm run setup:super-admin
 
    `supabase/migrations/006_super_admin_maidaamjad.sql`
 
-3. Sign in as above.
+3. Sign in at **`/admin/login`** with that email and password.
 
 ## Troubleshooting “Invalid email or password”
 
@@ -47,7 +47,7 @@ This usually means the email **already exists** in Supabase but the password is 
 2. Enter `maidaamjad32@gmail.com` and submit.
 3. Open the email link and set the password to `maida@128` (or your chosen password).
 4. Run `006_super_admin_maidaamjad.sql` in the SQL Editor so the profile role is **Super Admin**.
-5. Sign in: **Choose role** → **Super Admin** → **Login**.
+5. Sign in at **`/admin/login`**.
 
 **Fix B — Admin script (sets password + role)**
 
@@ -63,4 +63,4 @@ Or put the key in `.env` as `SUPABASE_SERVICE_ROLE_KEY` and run `npm run setup:s
 ## Notes
 
 - Super Admin cannot register via the app signup page (by design).
-- If login says “Incorrect role selected”, choose **Super Admin** on the role screen before logging in, and run `006_super_admin_maidaamjad.sql`.
+- If login says “Incorrect role selected”, use **`/admin/login`** (not `/login`) and run `006_super_admin_maidaamjad.sql`.
