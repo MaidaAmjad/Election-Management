@@ -1,8 +1,13 @@
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './context/AuthContext';
 import AppRoutes from './routes/AppRoutes';
+import EnvSetupRequired, { hasSupabaseEnv } from './components/EnvSetupRequired';
 
 export default function App() {
+  if (!hasSupabaseEnv()) {
+    return <EnvSetupRequired />;
+  }
+
   return (
     <AuthProvider>
       <AppRoutes />
