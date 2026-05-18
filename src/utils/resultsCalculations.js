@@ -1,3 +1,17 @@
+function parseMaskedVoterIds(raw) {
+  if (!raw) return [];
+  if (Array.isArray(raw)) return raw.filter(Boolean);
+  if (typeof raw === 'string') {
+    try {
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed.filter(Boolean) : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
+
 export function parseCandidates(raw) {
   if (!Array.isArray(raw)) return [];
   return raw.map((c) => ({
@@ -9,6 +23,7 @@ export function parseCandidates(raw) {
     vote_count: Number(c.vote_count ?? 0),
     vote_percentage: Number(c.vote_percentage ?? 0),
     rank: Number(c.rank ?? 0),
+    masked_voter_ids: parseMaskedVoterIds(c.masked_voter_ids),
   }));
 }
 

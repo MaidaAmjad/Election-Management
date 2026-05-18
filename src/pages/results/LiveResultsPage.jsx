@@ -157,7 +157,7 @@ export default function LiveResultsPage({ listPath }) {
       <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
         <h3 className="text-lg font-semibold text-slate-900">Vote share</h3>
         <div className="mt-4">
-          <CandidateProgressBars candidates={candidates} />
+          <CandidateProgressBars candidates={candidates} showMaskedVoterIds />
         </div>
       </section>
 

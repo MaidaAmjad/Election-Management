@@ -103,7 +103,10 @@ function ElectionLiveResultsCard({ election }) {
                 </span>
               </div>
               {poll.candidates.length ? (
-                <CandidateProgressBars candidates={poll.candidates} />
+                <CandidateProgressBars
+                  candidates={poll.candidates}
+                  showMaskedVoterIds
+                />
               ) : (
                 <p className="text-sm text-slate-500">No candidates on this poll yet.</p>
               )}
