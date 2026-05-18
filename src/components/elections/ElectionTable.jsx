@@ -9,7 +9,10 @@ import ElectionStatusBadge from './ElectionStatusBadge';
 import ElectionApprovalStatusBadge from './ElectionApprovalStatusBadge';
 import { ROUTES } from '../../utils/constants';
 import { formatElectionDate } from '../../utils/electionFormatters';
-import { isElectionEditable } from '../../utils/electionStatus';
+import {
+  canEditApprovedElectionSchedule,
+  isElectionEditable,
+} from '../../utils/electionStatus';
 
 export default function ElectionTable({
   elections,
@@ -54,6 +57,7 @@ export default function ElectionTable({
           <tbody className="divide-y divide-slate-200">
             {elections.map((election) => {
               const editable = isElectionEditable(election);
+              const scheduleEditable = canEditApprovedElectionSchedule(election);
               const loading = actionLoadingId === election.id;
 
               return (
@@ -89,6 +93,15 @@ export default function ElectionTable({
                         <HiOutlineEye className="h-4 w-4" />
                         View
                       </Link>
+                      {scheduleEditable && (
+                        <Link
+                          to={`${ROUTES.CREATOR_DASHBOARD}/elections/${election.id}/schedule`}
+                          className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100"
+                        >
+                          <HiOutlinePencilSquare className="h-4 w-4" />
+                          Schedule
+                        </Link>
+                      )}
                       {editable && (
                         <>
                           <Link

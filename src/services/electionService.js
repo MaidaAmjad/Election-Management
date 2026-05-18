@@ -242,6 +242,33 @@ export async function createElectionDraft(creatorId, form) {
   return fetchElectionById(data.id, creatorId);
 }
 
+export async function updateApprovedElectionSchedule(electionId, form) {
+  const { data, error } = await supabase.rpc('update_approved_election_schedule', {
+    p_election_id: electionId,
+    p_start_datetime: fromDatetimeLocalValue(form.start_datetime),
+    p_end_datetime: fromDatetimeLocalValue(form.end_datetime),
+    p_max_voters: Number(form.max_voters),
+  });
+
+  if (error) {
+    const missingRpc =
+      error.code === 'PGRST202' ||
+      error.message?.includes('update_approved_election_schedule');
+    if (missingRpc) {
+      throw new Error(
+        'Schedule updates are unavailable. Run migration 037_creator_update_approved_election_schedule.sql in Supabase.',
+      );
+    }
+    throw error;
+  }
+
+  if (data?.success === false) {
+    throw new Error(data.message ?? 'Could not update election schedule.');
+  }
+
+  return data;
+}
+
 export async function updateElectionDraft(electionId, creatorId, form) {
   const { error } = await supabase
     .from('elections')

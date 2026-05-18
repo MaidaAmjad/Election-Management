@@ -44,6 +44,66 @@ export function fromDatetimeLocalValue(value) {
   return new Date(value).toISOString();
 }
 
+export function validateApprovedElectionScheduleForm(
+  form,
+  {
+    registrationDeadline,
+    votingHasStarted = false,
+    electionHasEnded = false,
+    originalStartDatetime = null,
+  } = {},
+) {
+  const errors = {};
+
+  if (!form.start_datetime) {
+    errors.start_datetime = 'Start date and time is required.';
+  }
+
+  if (!form.end_datetime) {
+    errors.end_datetime = 'End date and time is required.';
+  }
+
+  if (!form.max_voters && form.max_voters !== 0) {
+    errors.max_voters = 'Maximum voters is required.';
+  } else {
+    const maxVoters = Number(form.max_voters);
+    if (!Number.isInteger(maxVoters) || maxVoters < 1) {
+      errors.max_voters = 'Maximum voters must be at least 1.';
+    }
+  }
+
+  const start = form.start_datetime ? new Date(form.start_datetime) : null;
+  const end = form.end_datetime ? new Date(form.end_datetime) : null;
+  const regDeadline = registrationDeadline ? new Date(registrationDeadline) : null;
+
+  if (start && end && start >= end) {
+    errors.end_datetime = 'End date/time must be after start date/time.';
+  }
+
+  if (regDeadline && start && regDeadline >= start) {
+    errors.start_datetime =
+      'Start date/time must be after the registration deadline.';
+  }
+
+  if (
+    votingHasStarted &&
+    originalStartDatetime &&
+    form.start_datetime &&
+    form.start_datetime !== originalStartDatetime
+  ) {
+    errors.start_datetime = 'Start time cannot be changed after voting has begun.';
+  }
+
+  if (electionHasEnded && end && form.original_end_datetime) {
+    const originalEnd = new Date(form.original_end_datetime);
+    if (end < originalEnd) {
+      errors.end_datetime = 'Cannot shorten the end time after the election has ended.';
+    }
+  }
+
+  return errors;
+}
+
 export function validateElectionForm(form, { isPublish = false, includePolls = true } = {}) {
   const errors = {};
 

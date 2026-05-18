@@ -31,6 +31,7 @@ import CreatorDashboardPage from '../pages/dashboard/creator/CreatorDashboardPag
 import VoterDashboardPage from '../pages/dashboard/voter/VoterDashboardPage';
 import ElectionFormPage from '../pages/elections/ElectionFormPage';
 import ElectionViewPage from '../pages/elections/ElectionViewPage';
+import ElectionScheduleEditPage from '../pages/elections/ElectionScheduleEditPage';
 import CandidateModuleRedirect from '../pages/candidates/CandidateModuleRedirect';
 import MyJoinedElectionsPage from '../pages/voters/MyJoinedElectionsPage';
 import AdminFinalizedVotersPage from '../pages/finalization/AdminFinalizedVotersPage';
@@ -192,6 +193,7 @@ export default function AppRoutes() {
             <Route path="elections/new" element={<ElectionFormPage />} />
             <Route path="elections/:id" element={<ElectionViewPage />} />
             <Route path="elections/:id/edit" element={<ElectionFormPage />} />
+            <Route path="elections/:id/schedule" element={<ElectionScheduleEditPage />} />
             <Route path="candidates/*" element={<CandidateModuleRedirect />} />
             <Route
               path="finalized-voters"

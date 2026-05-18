@@ -10,6 +10,7 @@ import ElectionStatusBadge from '../elections/ElectionStatusBadge';
 import { ROUTES } from '../../utils/constants';
 import { formatElectionDate } from '../../utils/electionFormatters';
 import { ELECTION_STATUS } from '../../utils/electionConstants';
+import { canEditApprovedElectionSchedule } from '../../utils/electionStatus';
 
 export default function CreatorDashboardElectionsTable({
   elections,
@@ -46,6 +47,7 @@ export default function CreatorDashboardElectionsTable({
           <tbody className="divide-y divide-slate-100">
             {elections.map((election) => {
               const isDraft = election.status === ELECTION_STATUS.DRAFT;
+              const scheduleEditable = canEditApprovedElectionSchedule(election);
               const loading = actionLoadingId === election.id;
 
               return (
@@ -75,6 +77,14 @@ export default function CreatorDashboardElectionsTable({
                       >
                         <HiOutlineEye className="h-4 w-4" /> View
                       </Link>
+                      {scheduleEditable && (
+                        <Link
+                          to={`${ROUTES.CREATOR_DASHBOARD}/elections/${election.id}/schedule`}
+                          className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100"
+                        >
+                          <HiOutlinePencilSquare className="h-4 w-4" /> Schedule
+                        </Link>
+                      )}
                       {isDraft && (
                         <>
                           <Link

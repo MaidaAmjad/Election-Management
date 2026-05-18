@@ -9,7 +9,10 @@ import ElectionStatusBadge from '../../components/elections/ElectionStatusBadge'
 import { useAuth } from '../../hooks/useAuth';
 import { fetchElectionById } from '../../services/electionService';
 import { ROUTES } from '../../utils/constants';
-import { isElectionEditable } from '../../utils/electionStatus';
+import {
+  canEditApprovedElectionSchedule,
+  isElectionEditable,
+} from '../../utils/electionStatus';
 import { electionToForm } from '../../utils/electionValidation';
 
 export default function ElectionViewPage() {
@@ -61,6 +64,7 @@ export default function ElectionViewPage() {
   }
 
   const editable = isElectionEditable(election);
+  const canEditSchedule = canEditApprovedElectionSchedule(election);
 
   return (
     <div className="space-y-6">
@@ -77,7 +81,9 @@ export default function ElectionViewPage() {
           <p className="mt-1 text-slate-600">
             {editable
               ? 'This election is a draft. Edit or publish when ready.'
-              : 'This election is published and read-only.'}
+              : canEditSchedule
+                ? 'Approved election — you can update the schedule and voter capacity below.'
+                : 'This election is published and read-only.'}
           </p>
         </div>
         <div className="flex flex-col items-start gap-3 sm:items-end">
@@ -87,6 +93,14 @@ export default function ElectionViewPage() {
               <Button variant="secondary" size="sm" className="gap-2">
                 <HiOutlinePencilSquare className="h-4 w-4" aria-hidden="true" />
                 Edit draft
+              </Button>
+            </Link>
+          )}
+          {canEditSchedule && (
+            <Link to={`${ROUTES.CREATOR_DASHBOARD}/elections/${id}/schedule`}>
+              <Button variant="secondary" size="sm" className="gap-2">
+                <HiOutlinePencilSquare className="h-4 w-4" aria-hidden="true" />
+                Edit schedule
               </Button>
             </Link>
           )}

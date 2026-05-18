@@ -1,5 +1,6 @@
 import { ELECTION_STATUS } from './electionConstants';
 import { ELECTION_APPROVAL_STATUS } from './electionApprovalConstants';
+import { REGISTRATION_STATUS } from './finalizationConstants';
 
 /**
  * Derives display status from stored status and schedule.
@@ -44,4 +45,17 @@ export function isElectionEditable(election) {
 
 export function isElectionReadOnly(election) {
   return !isElectionEditable(election);
+}
+
+/** Approved (published) elections: creator may adjust schedule and capacity only. */
+export function canEditApprovedElectionSchedule(election) {
+  if (!election) return false;
+  if (election.approval_status !== ELECTION_APPROVAL_STATUS.APPROVED) return false;
+  if (election.status === ELECTION_STATUS.DRAFT) return false;
+  if (getEffectiveStatus(election) === ELECTION_STATUS.COMPLETED) return false;
+  return true;
+}
+
+export function isMaxVotersLockedForScheduleEdit(election) {
+  return election?.registration_status === REGISTRATION_STATUS.FINALIZED;
 }
