@@ -3,13 +3,16 @@ import { Link, useNavigate } from 'react-router-dom';
 import { HiOutlineArrowLeft, HiOutlineShieldCheck } from 'react-icons/hi2';
 import RoleCard from '../components/auth/RoleCard';
 import Button from '../components/ui/Button';
-import { APP_NAME, ROUTES, USER_ROLES } from '../utils/constants';
+import { APP_NAME, ROUTES } from '../utils/constants';
 import { ROLE_OPTIONS, getRoleOption } from '../utils/roleConfig';
 import { getSelectedRole, setSelectedRole } from '../utils/roleStorage';
 
 export default function RoleSelection() {
   const navigate = useNavigate();
-  const [selected, setSelected] = useState(() => getSelectedRole());
+  const [selected, setSelected] = useState(() => {
+    const role = getSelectedRole();
+    return ROLE_OPTIONS.some((option) => option.role === role) ? role : null;
+  });
 
   function handleSelect(role) {
     setSelected(role);
@@ -31,7 +34,6 @@ export default function RoleSelection() {
   const selectedOption = ROLE_OPTIONS.find((option) => option.role === selected);
   const selectedMeta = selected ? getRoleOption(selected) : null;
   const signupAllowed = Boolean(selectedMeta?.signupAllowed);
-  const isSuperAdmin = selected === USER_ROLES.SUPER_ADMIN;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-primary-50/40 to-slate-100">
@@ -61,7 +63,7 @@ export default function RoleSelection() {
           </p>
         </div>
 
-        <div className="mt-12 grid gap-6 md:grid-cols-3">
+        <div className="mx-auto mt-12 grid max-w-3xl gap-6 sm:grid-cols-2">
           {ROLE_OPTIONS.map((option) => (
             <RoleCard
               key={option.role}
@@ -85,13 +87,6 @@ export default function RoleSelection() {
               {selectedOption.title}
             </p>
 
-            {isSuperAdmin && (
-              <p className="mt-4 rounded-lg bg-amber-50 px-4 py-3 text-center text-sm text-amber-800">
-                Super Admin accounts are created by the system. Sign in with your
-                assigned credentials.
-              </p>
-            )}
-
             <div className="mt-6 flex flex-col gap-3">
               <Button className="w-full" size="lg" onClick={handleContinueToLogin}>
                 Continue to sign in
@@ -112,7 +107,7 @@ export default function RoleSelection() {
 
         {!selected && (
           <p className="mt-10 text-center text-sm text-slate-500">
-            Select Election Creator, Voter, or Super Admin to continue.
+            Select Election Creator or Voter to continue.
           </p>
         )}
       </div>
