@@ -219,6 +219,37 @@ export async function fetchElectionVoteCount(electionId) {
   return counts[electionId] ?? 0;
 }
 
+export async function fetchPublicLiveResults(electionIds) {
+  if (!electionIds?.length) {
+    return { success: true, elections: [] };
+  }
+
+  const { data, error } = await supabase.rpc('get_public_live_results', {
+    p_election_ids: electionIds,
+  });
+
+  if (error) {
+    const missingRpc =
+      error.code === 'PGRST202' ||
+      error.message?.includes('get_public_live_results');
+    if (missingRpc) {
+      throw new Error(
+        'Live results are unavailable. Run migration 033_public_live_results.sql in Supabase SQL Editor.',
+      );
+    }
+    throw error;
+  }
+
+  if (data?.success === false) {
+    throw new Error(data?.message ?? 'Could not load live results.');
+  }
+
+  return {
+    success: true,
+    elections: Array.isArray(data?.elections) ? data.elections : [],
+  };
+}
+
 export {
   fetchVoterRegistrationForElection as fetchUserRegistrationForElection,
   joinElection as registerForElection,

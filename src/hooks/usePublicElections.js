@@ -82,6 +82,7 @@ export function usePublicElections() {
 
   return {
     elections: filtered,
+    allElections: elections,
     grouped,
     loading,
     error,

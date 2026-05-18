@@ -62,26 +62,34 @@ export async function fetchVoterLockLogs(electionId) {
   const { data, error } = await supabase
     .from('voter_lock_logs')
     .select(
-      `
-      id,
-      admin_id,
-      election_id,
-      action_type,
-      previous_value,
-      new_value,
-      reason,
-      created_at,
-      profiles:admin_id (full_name)
-    `,
+      'id, admin_id, election_id, action_type, previous_value, new_value, reason, created_at',
     )
     .eq('election_id', electionId)
     .order('created_at', { ascending: false });
 
   if (error) throw error;
 
-  return (data ?? []).map((row) => ({
+  const rows = data ?? [];
+  const adminIds = [...new Set(rows.map((row) => row.admin_id).filter(Boolean))];
+
+  let nameById = {};
+  if (adminIds.length) {
+    const { data: profiles, error: profileError } = await supabase
+      .from('profiles')
+      .select('id, full_name')
+      .in('id', adminIds);
+
+    if (profileError) throw profileError;
+    nameById = Object.fromEntries(
+      (profiles ?? []).map((p) => [p.id, p.full_name]),
+    );
+  }
+
+  return rows.map((row) => ({
     ...row,
-    admin_name: row.profiles?.full_name ?? (row.admin_id ? 'Admin' : 'System'),
+    admin_name:
+      (row.admin_id && nameById[row.admin_id]) ??
+      (row.admin_id ? 'Admin' : 'System'),
   }));
 }
 
