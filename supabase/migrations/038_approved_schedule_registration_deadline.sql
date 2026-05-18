@@ -1,6 +1,11 @@
--- =============================================================================
--- Creators may update schedule fields on admin-approved elections.
--- =============================================================================
+-- Add registration_deadline to approved-election schedule updates (037 follow-up).
+
+drop function if exists public.update_approved_election_schedule(
+  uuid,
+  timestamptz,
+  timestamptz,
+  integer
+);
 
 create or replace function public.update_approved_election_schedule(
   p_election_id uuid,
@@ -69,7 +74,7 @@ begin
       'success',
       false,
       'message',
-      'Only approved elections can be updated. Edit drafts from the election wizard.'
+      'Only approved elections can be updated here. Use the draft editor for unpublished elections.'
     );
   end if;
 
@@ -95,17 +100,6 @@ begin
     );
   end if;
 
-  v_active := public.count_active_registrations(p_election_id);
-
-  if p_max_voters < v_active then
-    return jsonb_build_object(
-      'success',
-      false,
-      'message',
-      format('Maximum voters cannot be less than current registrations (%s).', v_active)
-    );
-  end if;
-
   if now() >= v_row.start_datetime
     and p_registration_deadline is distinct from v_row.registration_deadline
   then
@@ -114,6 +108,17 @@ begin
       false,
       'message',
       'Cannot change the registration deadline after voting has begun.'
+    );
+  end if;
+
+  v_active := public.count_active_registrations(p_election_id);
+
+  if p_max_voters < v_active then
+    return jsonb_build_object(
+      'success',
+      false,
+      'message',
+      format('Maximum voters cannot be less than current registrations (%s).', v_active)
     );
   end if;
 

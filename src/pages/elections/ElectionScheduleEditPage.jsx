@@ -27,6 +27,7 @@ function buildScheduleForm(election) {
   return {
     start_datetime: toDatetimeLocalValue(election.start_datetime),
     end_datetime: toDatetimeLocalValue(election.end_datetime),
+    registration_deadline: toDatetimeLocalValue(election.registration_deadline),
     max_voters: String(election.max_voters ?? ''),
     original_end_datetime: election.end_datetime,
   };
@@ -87,10 +88,12 @@ export default function ElectionScheduleEditPage() {
   async function handleSave(event) {
     event.preventDefault();
     const validationErrors = validateApprovedElectionScheduleForm(form, {
-      registrationDeadline: election.registration_deadline,
       votingHasStarted,
       electionHasEnded,
       originalStartDatetime: toDatetimeLocalValue(election.start_datetime),
+      originalRegistrationDeadline: toDatetimeLocalValue(
+        election.registration_deadline,
+      ),
     });
     setErrors(validationErrors);
     if (Object.keys(validationErrors).length > 0) return;
@@ -119,7 +122,7 @@ export default function ElectionScheduleEditPage() {
     return null;
   }
 
-  const maxVotersLocked = isMaxVotersLockedForScheduleEdit(election);
+  const scheduleFieldsLocked = isMaxVotersLockedForScheduleEdit(election);
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
@@ -145,7 +148,8 @@ export default function ElectionScheduleEditPage() {
           onChange={setForm}
           errors={errors}
           startDisabled={votingHasStarted}
-          maxVotersDisabled={maxVotersLocked}
+          registrationDeadlineDisabled={scheduleFieldsLocked || votingHasStarted}
+          maxVotersDisabled={scheduleFieldsLocked}
         />
 
         <div className="flex flex-wrap justify-end gap-3">

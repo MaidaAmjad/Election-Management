@@ -6,6 +6,7 @@ export default function ElectionScheduleForm({
   errors = {},
   maxVotersDisabled = false,
   startDisabled = false,
+  registrationDeadlineDisabled = false,
 }) {
   function setField(field, value) {
     onChange({ ...form, [field]: value });
@@ -16,8 +17,8 @@ export default function ElectionScheduleForm({
       <div>
         <h3 className="text-lg font-semibold text-slate-900">Schedule & capacity</h3>
         <p className="mt-1 text-sm text-slate-500">
-          Update when voting runs and how many voters may register. Title, polls, and
-          candidates cannot be changed after approval.
+          After admin approval you can only change the schedule and voter capacity below.
+          Title, description, category, polls, and candidates stay locked.
         </p>
       </div>
 
@@ -40,6 +41,16 @@ export default function ElectionScheduleForm({
           error={errors.end_datetime}
         />
       </div>
+
+      <Input
+        id="registration_deadline"
+        type="datetime-local"
+        label="Registration deadline"
+        value={form.registration_deadline}
+        onChange={(e) => setField('registration_deadline', e.target.value)}
+        error={errors.registration_deadline}
+        disabled={registrationDeadlineDisabled}
+      />
 
       <Input
         id="max_voters"

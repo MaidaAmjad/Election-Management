@@ -22,7 +22,10 @@ import { submitElectionForApproval } from '../../services/electionApprovalServic
 import ElectionApprovalStatusBadge from '../../components/elections/ElectionApprovalStatusBadge';
 import { ROUTES } from '../../utils/constants';
 import { ELECTION_STATUS } from '../../utils/electionConstants';
-import { isElectionEditable } from '../../utils/electionStatus';
+import {
+  canEditApprovedElectionSchedule,
+  isElectionEditable,
+} from '../../utils/electionStatus';
 import { getDisplayPolls, getStagingPoll } from '../../utils/pollCandidatesLoader';
 import {
   emptyElectionForm,
@@ -65,8 +68,16 @@ export default function ElectionFormPage() {
       try {
         const election = await fetchElectionById(id, user.id);
 
+        if (canEditApprovedElectionSchedule(election)) {
+          toast('Use Edit schedule to change dates and voter limit only.', { icon: 'ℹ️' });
+          navigate(`${ROUTES.CREATOR_DASHBOARD}/elections/${id}/schedule`, {
+            replace: true,
+          });
+          return;
+        }
+
         if (!isElectionEditable(election)) {
-          toast.error('Published elections cannot be edited.');
+          toast.error('This election cannot be edited.');
           navigate(`${ROUTES.CREATOR_DASHBOARD}/elections/${id}`, { replace: true });
           return;
         }

@@ -47,10 +47,10 @@ export function fromDatetimeLocalValue(value) {
 export function validateApprovedElectionScheduleForm(
   form,
   {
-    registrationDeadline,
     votingHasStarted = false,
     electionHasEnded = false,
     originalStartDatetime = null,
+    originalRegistrationDeadline = null,
   } = {},
 ) {
   const errors = {};
@@ -61,6 +61,10 @@ export function validateApprovedElectionScheduleForm(
 
   if (!form.end_datetime) {
     errors.end_datetime = 'End date and time is required.';
+  }
+
+  if (!form.registration_deadline) {
+    errors.registration_deadline = 'Registration deadline is required.';
   }
 
   if (!form.max_voters && form.max_voters !== 0) {
@@ -74,15 +78,17 @@ export function validateApprovedElectionScheduleForm(
 
   const start = form.start_datetime ? new Date(form.start_datetime) : null;
   const end = form.end_datetime ? new Date(form.end_datetime) : null;
-  const regDeadline = registrationDeadline ? new Date(registrationDeadline) : null;
+  const regDeadline = form.registration_deadline
+    ? new Date(form.registration_deadline)
+    : null;
 
   if (start && end && start >= end) {
     errors.end_datetime = 'End date/time must be after start date/time.';
   }
 
   if (regDeadline && start && regDeadline >= start) {
-    errors.start_datetime =
-      'Start date/time must be after the registration deadline.';
+    errors.registration_deadline =
+      'Registration deadline must be before election start time.';
   }
 
   if (
@@ -92,6 +98,16 @@ export function validateApprovedElectionScheduleForm(
     form.start_datetime !== originalStartDatetime
   ) {
     errors.start_datetime = 'Start time cannot be changed after voting has begun.';
+  }
+
+  if (
+    votingHasStarted &&
+    originalRegistrationDeadline &&
+    form.registration_deadline &&
+    form.registration_deadline !== originalRegistrationDeadline
+  ) {
+    errors.registration_deadline =
+      'Registration deadline cannot be changed after voting has begun.';
   }
 
   if (electionHasEnded && end && form.original_end_datetime) {

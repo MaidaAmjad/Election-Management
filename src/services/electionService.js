@@ -247,6 +247,7 @@ export async function updateApprovedElectionSchedule(electionId, form) {
     p_election_id: electionId,
     p_start_datetime: fromDatetimeLocalValue(form.start_datetime),
     p_end_datetime: fromDatetimeLocalValue(form.end_datetime),
+    p_registration_deadline: fromDatetimeLocalValue(form.registration_deadline),
     p_max_voters: Number(form.max_voters),
   });
 
