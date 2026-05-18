@@ -142,11 +142,12 @@ export async function joinElection(electionId) {
         const emailResult = await sendSecretIdsOnRegistration({
           electionId,
           secretRowIds: data?.secret_row_ids,
-          secretIdsIssued: data?.secret_ids_issued ?? null,
         });
+        const pollsEmailed = emailResult?.sent ?? 0;
         return {
           ...data,
-          secret_email_sent: (emailResult?.sent ?? 0) > 0,
+          secret_email_sent: pollsEmailed > 0,
+          secret_email_poll_count: emailResult?.poll_count ?? pollsEmailed,
           secret_email_message: emailResult?.message ?? null,
         };
       } catch (emailErr) {

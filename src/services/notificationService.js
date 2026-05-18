@@ -188,68 +188,84 @@ function normalizeSecretRowIds(secretRowIds) {
   return [];
 }
 
-/** Email all secret IDs for the current voter after election registration. */
+/** Email all secret IDs for the current voter after election registration (one email per poll listed). */
 export async function sendSecretIdsOnRegistration({
   electionId,
   secretRowIds = null,
-  secretIdsIssued = null,
 }) {
-  if (secretIdsIssued === 0) {
-    return {
-      success: true,
-      sent: 0,
-      message:
-        'Registered successfully. Secret IDs will be emailed once the election has voting polls (after the creator finishes setup).',
-    };
-  }
-
-  try {
-    return await invokeEmailService({
-      action: 'secret_id_registration_notify',
-      election_id: electionId,
-    });
-  } catch (err) {
-    const message = err?.message ?? '';
-    if (!message.includes('Unknown action')) throw err;
-    return sendSecretIdsOnRegistrationFallback({
-      electionId,
-      secretRowIds,
-    });
-  }
-}
-
-/** Works with older send-email deployments (before secret_id_registration_notify). */
-async function sendSecretIdsOnRegistrationFallback({ electionId, secretRowIds }) {
   const {
     data: { user },
     error: userError,
   } = await supabase.auth.getUser();
   if (userError || !user) throw new Error('Authentication required');
 
-  const fromRegistration = normalizeSecretRowIds(secretRowIds);
-  let rowIds = fromRegistration;
-
-  if (!rowIds.length) {
-    const { data: issued, error: issueError } = await supabase.rpc(
-      'issue_secret_ids_for_voter',
-      { p_election_id: electionId, p_voter_id: user.id },
+  const { data: issued, error: issueError } = await supabase.rpc(
+    'issue_secret_ids_for_voter',
+    { p_election_id: electionId, p_voter_id: user.id },
+  );
+  if (issueError) throw issueError;
+  if (issued?.success === false) {
+    throw new Error(
+      issued?.message ??
+        'Could not create Secret IDs. Run migrations 028/029/031 in Supabase SQL Editor.',
     );
-    if (issueError) throw issueError;
-    if (issued?.success === false) {
-      throw new Error(
-        issued?.message ??
-          'Could not create Secret IDs. Run migrations 028/029 in Supabase SQL Editor.',
-      );
-    }
-    rowIds = normalizeSecretRowIds(issued?.secret_row_ids);
   }
+
+  const rowIds = normalizeSecretRowIds(issued?.secret_row_ids ?? secretRowIds);
+  const pollCount = rowIds.length;
+
+  if (pollCount === 0) {
+    return {
+      success: true,
+      sent: 0,
+      poll_count: 0,
+      message:
+        'Registered successfully. Secret IDs will be emailed when the election has voting polls.',
+    };
+  }
+
+  try {
+    const result = await invokeEmailService({
+      action: 'secret_id_registration_notify',
+      election_id: electionId,
+    });
+    const sent = Number(result?.sent ?? 0);
+    if (sent > 0) {
+      return {
+        ...result,
+        poll_count: pollCount,
+        sent,
+      };
+    }
+  } catch (err) {
+    const message = err?.message ?? '';
+    if (!message.includes('Unknown action')) {
+      throw err;
+    }
+  }
+
+  return sendSecretIdsOnRegistrationFallback({
+    electionId,
+    secretRowIds: rowIds,
+    pollCount,
+  });
+}
+
+/** Works with older send-email deployments (before secret_id_registration_notify). */
+async function sendSecretIdsOnRegistrationFallback({
+  electionId,
+  secretRowIds,
+  pollCount: knownPollCount,
+}) {
+  const rowIds = normalizeSecretRowIds(secretRowIds);
 
   if (!rowIds.length) {
     return {
       success: true,
       sent: 0,
+      poll_count: 0,
       message:
-        'Registered successfully. Secret IDs will be emailed once the election has voting polls (after the creator finishes setup).',
+        'Registered successfully. Secret IDs will be emailed when the election has voting polls.',
     };
   }
 
@@ -303,7 +319,16 @@ async function sendSecretIdsOnRegistrationFallback({ electionId, secretRowIds })
     success: true,
     sent,
     failed,
+    poll_count: knownPollCount ?? rowIds.length,
   };
+}
+
+/** After polls are saved, email registered voters who still have pending Secret IDs. */
+export async function notifyPendingSecretIdEmails(electionId) {
+  return invokeEmailService({
+    action: 'secret_id_notify_pending_for_election',
+    election_id: electionId,
+  });
 }
 
 export async function sendAllSecretIdEmails({ electionId }) {

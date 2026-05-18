@@ -22,8 +22,11 @@ export function useJoinElection({ onSuccess } = {}) {
         } else if (result.code === 'WAITLISTED') {
           toast.success(result.message);
         } else if (result.secret_email_sent) {
+          const pollN = result.secret_email_poll_count ?? result.secret_ids_issued ?? 1;
           toast.success(
-            'You are registered. Your Secret Voting ID was sent to your email — check your inbox (and spam folder).',
+            pollN > 1
+              ? `You are registered. ${pollN} Secret Voting IDs were sent to your email — check inbox and spam.`
+              : 'You are registered. Your Secret Voting ID was sent to your email — check inbox and spam.',
           );
         } else if (result.secret_email_error) {
           toast.success(result.message ?? 'You are registered for this election.');

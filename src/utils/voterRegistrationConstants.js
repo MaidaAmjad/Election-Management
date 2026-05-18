@@ -26,6 +26,7 @@ export const REGISTRATION_ERROR_CODES = {
 export const PARTICIPATION_TERMS = [
   'One voter can vote only once',
   'False information is prohibited',
+  'Secret voting IDs (one per poll) will be emailed to your account address after you join',
   'Secret voter ID must remain confidential',
   'Election rules must be followed',
 ];

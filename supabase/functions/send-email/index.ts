@@ -42,6 +42,7 @@ type EmailAction =
   | 'secret_id_send'
   | 'secret_id_send_all'
   | 'secret_id_registration_notify'
+  | 'secret_id_notify_pending_for_election'
   | 'process_scheduled_emails'
   | 'retry_failed_emails';
 
@@ -272,6 +273,112 @@ async function resolveRecipientEmail(
     throw new Error('No email address found for this user.');
   }
   return authEmail;
+}
+
+type SecretIdRow = {
+  id: string;
+  secret_id: string;
+  poll_id: string;
+};
+
+/** One combined email with all pending/failed secret IDs for a voter in an election. */
+async function sendRegistrationSecretIdsEmail(
+  admin: ReturnType<typeof getAdminClient>,
+  electionId: string,
+  voterId: string,
+): Promise<{ sent: number; error?: string }> {
+  const { data: secretRows, error: rowsError } = await admin
+    .from('secret_ids')
+    .select('id, secret_id, poll_id, email_status')
+    .eq('election_id', electionId)
+    .eq('voter_id', voterId)
+    .eq('is_active', true)
+    .in('email_status', ['Pending', 'Failed']);
+
+  if (rowsError) throw rowsError;
+
+  const rows = (secretRows ?? []) as SecretIdRow[];
+  if (!rows.length) return { sent: 0 };
+
+  const pollIds = [...new Set(rows.map((r) => r.poll_id))];
+  const { data: polls } = await admin
+    .from('polls')
+    .select('id, title')
+    .in('id', pollIds);
+  const pollTitleById = Object.fromEntries(
+    (polls ?? []).map((p) => [p.id, p.title]),
+  );
+
+  const { data: election } = await admin
+    .from('elections')
+    .select('title')
+    .eq('id', electionId)
+    .maybeSingle();
+
+  const voterName = await fetchVoterName(admin, voterId);
+  const email = await resolveRecipientEmail(admin, voterId);
+  const origin = appOrigin();
+  const electionTitle = election?.title ?? 'Election';
+  const items = rows.map((row) => ({
+    pollTitle: pollTitleById[row.poll_id] ?? 'Poll',
+    secretId: row.secret_id,
+  }));
+
+  const subject =
+    items.length > 1
+      ? `Your Secret Voting IDs — ${electionTitle}`
+      : `Your Secret Voting ID — ${electionTitle}`;
+
+  try {
+    await sendWithLog(admin, {
+      to: email,
+      subject,
+      html: secretIdsRegistrationEmail({
+        voterName,
+        electionTitle,
+        voteUrl: `${origin}/voter-dashboard/vote`,
+        items,
+      }),
+      userId: voterId,
+      notificationType: 'secret_id',
+      electionId,
+    });
+
+    for (const row of rows) {
+      const { error: statusErr } = await admin.rpc('update_secret_id_email_status', {
+        p_secret_row_id: row.id,
+        p_status: 'Sent',
+        p_log_action: 'Secret ID email sent',
+      });
+      if (statusErr) console.error('[update_secret_id_email_status]', statusErr);
+    }
+
+    await createInAppNotification(admin, {
+      userId: voterId,
+      title: 'Secret ID sent to your email',
+      message: `Your voting credentials for ${electionTitle} were sent to ${email}.`,
+      type: 'secret_id',
+      electionId,
+    });
+
+    return { sent: rows.length };
+  } catch (sendErr) {
+    console.error('[sendRegistrationSecretIdsEmail]', sendErr);
+    for (const row of rows) {
+      const { error: statusErr } = await admin.rpc(
+        'update_secret_id_email_status',
+        {
+          p_secret_row_id: row.id,
+          p_status: 'Failed',
+          p_log_action: 'Secret ID email failed',
+        },
+      );
+      if (statusErr) console.error('[update_secret_id_email_status]', statusErr);
+    }
+    const msg =
+      sendErr instanceof Error ? sendErr.message : 'Failed to send Secret ID email.';
+    return { sent: 0, error: msg };
+  }
 }
 
 async function sendWithLog(
@@ -1109,16 +1216,10 @@ serve(async (req) => {
       let failed = 0;
 
       for (const row of list) {
-        const { data: userData } = await admin.auth.admin.getUserById(
-          row.voter_id,
-        );
-        const email = userData?.user?.email;
-        const voterName = await fetchVoterName(admin, row.voter_id);
-        const electionTitle =
-          (row.elections as { title?: string })?.title ?? 'Election';
-        const pollTitle = (row.polls as { title?: string })?.title ?? 'Poll';
-
-        if (!email) {
+        let email: string;
+        try {
+          email = await resolveRecipientEmail(admin, row.voter_id);
+        } catch {
           await admin.rpc('update_secret_id_email_status', {
             p_secret_row_id: row.id,
             p_status: 'Failed',
@@ -1127,6 +1228,10 @@ serve(async (req) => {
           failed += 1;
           continue;
         }
+        const voterName = await fetchVoterName(admin, row.voter_id);
+        const electionTitle =
+          (row.elections as { title?: string })?.title ?? 'Election';
+        const pollTitle = (row.polls as { title?: string })?.title ?? 'Poll';
 
         const subject = 'Your Secret Voting ID';
         try {
@@ -1219,18 +1324,17 @@ serve(async (req) => {
       }
       issueResult = issued as Record<string, unknown> | null;
 
-      const { data: secretRows, error: rowsError } = await admin
-        .from('secret_ids')
-        .select('id, secret_id, poll_id, email_status')
-        .eq('election_id', electionId)
-        .eq('voter_id', user.id)
-        .eq('is_active', true)
-        .in('email_status', ['Pending', 'Failed']);
+      const sendResult = await sendRegistrationSecretIdsEmail(
+        admin,
+        electionId,
+        user.id,
+      );
 
-      if (rowsError) throw rowsError;
+      if (sendResult.error) {
+        return jsonResponse({ success: false, error: sendResult.error }, 500);
+      }
 
-      const rows = secretRows ?? [];
-      if (!rows.length) {
+      if (sendResult.sent === 0) {
         return jsonResponse({
           success: true,
           sent: 0,
@@ -1239,107 +1343,105 @@ serve(async (req) => {
         });
       }
 
-      const pollIds = [...new Set(rows.map((r) => r.poll_id))];
-      const { data: polls } = await admin
-        .from('polls')
-        .select('id, title')
-        .in('id', pollIds);
-      const pollTitleById = Object.fromEntries(
-        (polls ?? []).map((p) => [p.id, p.title]),
-      );
+      return jsonResponse({
+        success: true,
+        sent: sendResult.sent,
+        generated_count: issueResult?.generated_count ?? 0,
+      });
+    }
 
-      const { data: election } = await admin
+    if (action === 'secret_id_notify_pending_for_election') {
+      const electionId = body.election_id as string | undefined;
+      if (!electionId) {
+        return jsonResponse({ error: 'election_id is required' }, 400);
+      }
+
+      const userClient = getUserClient(req);
+      if (!userClient) {
+        return jsonResponse({ error: 'Authentication required' }, 401);
+      }
+
+      const {
+        data: { user },
+        error: userError,
+      } = await userClient.auth.getUser();
+      if (userError || !user) {
+        return jsonResponse({ error: 'Authentication required' }, 401);
+      }
+
+      const { data: election, error: electionError } = await admin
         .from('elections')
-        .select('title')
+        .select('id, creator_id')
         .eq('id', electionId)
         .maybeSingle();
 
-      const { data: profile } = await admin
-        .from('profiles')
-        .select('full_name')
-        .eq('id', user.id)
-        .maybeSingle();
-
-      const { data: userData } = await admin.auth.admin.getUserById(user.id);
-      const email = userData?.user?.email;
-      if (!email) {
-        return jsonResponse({
-          success: false,
-          error: 'No email address on your account.',
-        });
+      if (electionError) throw electionError;
+      if (!election) {
+        return jsonResponse({ error: 'Election not found' }, 404);
       }
 
-      const origin = appOrigin();
-      const voterName = profile?.full_name ?? 'Voter';
-      const electionTitle = election?.title ?? 'Election';
-      const items = rows.map((row) => ({
-        pollTitle: pollTitleById[row.poll_id] ?? 'Poll',
-        secretId: row.secret_id,
-      }));
-
-      const subject =
-        items.length > 1
-          ? `Your Secret Voting IDs — ${electionTitle}`
-          : `Your Secret Voting ID — ${electionTitle}`;
-
-      try {
-        await sendWithLog(admin, {
-          to: email,
-          subject,
-          html: secretIdsRegistrationEmail({
-            voterName,
-            electionTitle,
-            voteUrl: `${origin}/voter-dashboard/vote`,
-            items,
-          }),
-          userId: user.id,
-          notificationType: 'secret_id',
-          electionId,
-        });
-
-        for (const row of rows) {
-          const { error: statusErr } = await admin.rpc('update_secret_id_email_status', {
-            p_secret_row_id: row.id,
-            p_status: 'Sent',
-            p_log_action: 'Registration email sent',
-          });
-          if (statusErr) console.error('[update_secret_id_email_status]', statusErr);
-        }
-
-        await createInAppNotification(admin, {
-          userId: user.id,
-          title: 'Secret ID sent to your email',
-          message: `Your voting credentials for ${electionTitle} were sent to ${email}.`,
-          type: 'secret_id',
-          electionId,
-        });
-
-        return jsonResponse({
-          success: true,
-          sent: rows.length,
-          generated_count: issueResult?.generated_count ?? 0,
-        });
-      } catch (sendErr) {
-        console.error('[secret_id_registration_notify] send', sendErr);
-        for (const row of rows) {
-          const { error: statusErr } = await admin.rpc(
-            'update_secret_id_email_status',
-            {
-              p_secret_row_id: row.id,
-              p_status: 'Failed',
-              p_log_action: 'Registration email failed',
-            },
-          );
-          if (statusErr) {
-            console.error('[update_secret_id_email_status]', statusErr);
-          }
-        }
-        const msg =
-          sendErr instanceof Error
-            ? sendErr.message
-            : 'Failed to send Secret ID email.';
-        return jsonResponse({ success: false, error: msg }, 500);
+      const { data: isSuperAdmin } = await userClient.rpc('is_super_admin');
+      if (election.creator_id !== user.id && !isSuperAdmin) {
+        return jsonResponse({ error: 'Access denied' }, 403);
       }
+
+      const { error: issueAllError } = await admin.rpc(
+        'issue_secret_ids_for_all_registered_voters',
+        { p_election_id: electionId },
+      );
+      if (issueAllError) {
+        console.error(
+          '[secret_id_notify_pending_for_election] issue_secret_ids_for_all_registered_voters',
+          issueAllError,
+        );
+        return jsonResponse(
+          {
+            success: false,
+            error:
+              issueAllError.message ??
+              'Could not issue Secret IDs. Run migration 032 in Supabase SQL Editor.',
+          },
+          500,
+        );
+      }
+
+      const { data: pendingVoters, error: votersError } = await admin
+        .from('secret_ids')
+        .select('voter_id')
+        .eq('election_id', electionId)
+        .eq('is_active', true)
+        .in('email_status', ['Pending', 'Failed']);
+
+      if (votersError) throw votersError;
+
+      const voterIds = [
+        ...new Set((pendingVoters ?? []).map((row) => row.voter_id as string)),
+      ];
+
+      let votersEmailed = 0;
+      let idsSent = 0;
+      const errors: string[] = [];
+
+      for (const voterId of voterIds) {
+        const result = await sendRegistrationSecretIdsEmail(
+          admin,
+          electionId,
+          voterId,
+        );
+        if (result.sent > 0) {
+          votersEmailed += 1;
+          idsSent += result.sent;
+        } else if (result.error) {
+          errors.push(result.error);
+        }
+      }
+
+      return jsonResponse({
+        success: true,
+        voters_emailed: votersEmailed,
+        sent: idsSent,
+        errors: errors.length ? errors.slice(0, 5) : undefined,
+      });
     }
 
     if (action === 'process_scheduled_emails') {

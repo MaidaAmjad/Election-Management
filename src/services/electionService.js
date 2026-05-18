@@ -1,4 +1,5 @@
 import { supabase } from '../supabase/supabase';
+import { notifyPendingSecretIdEmails } from './notificationService';
 import { ELECTION_STATUS } from '../utils/electionConstants';
 import { fromDatetimeLocalValue } from '../utils/electionValidation';
 import { getEffectiveStatus } from '../utils/electionStatus';
@@ -170,6 +171,9 @@ async function syncPolls(electionId, polls) {
   }
 
   await syncPollOptions(polls, idMap);
+
+  void notifyPendingSecretIdEmails(electionId).catch(() => {});
+
   return loadPollsWithCandidates(electionId);
 }
 
