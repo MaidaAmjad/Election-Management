@@ -1,9 +1,29 @@
 import { supabase } from '../supabase/supabase';
 
+function parseJsonbArray(data) {
+  if (Array.isArray(data)) return data;
+  if (typeof data === 'string') {
+    try {
+      const parsed = JSON.parse(data);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
+
 export async function fetchVotableElections() {
   const { data, error } = await supabase.rpc('get_votable_elections_for_voter');
-  if (error) throw error;
-  return Array.isArray(data) ? data : [];
+  if (error) {
+    if (error.message?.includes('get_votable_elections_for_voter')) {
+      throw new Error(
+        'Voting functions are not installed. Run migration 031_get_votable_elections_for_voter.sql in Supabase SQL Editor.',
+      );
+    }
+    throw error;
+  }
+  return parseJsonbArray(data);
 }
 
 export async function fetchVotingBallot(pollId) {

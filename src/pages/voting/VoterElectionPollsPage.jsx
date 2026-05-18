@@ -36,11 +36,28 @@ export default function VoterElectionPollsPage() {
     );
   }
 
-  if (error || !election) {
+  if (error) {
     return (
-      <p className="text-red-600">
-        {error ?? 'Election not found or you are not registered.'}
+      <p className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        {error}
       </p>
+    );
+  }
+
+  if (!election) {
+    return (
+      <div className="space-y-3">
+        <p className="text-slate-600">
+          This election is not available for voting yet, or you are not registered.
+        </p>
+        <Link
+          to={ROUTES.VOTER_DASHBOARD}
+          className="inline-flex items-center gap-1 text-sm font-medium text-primary-700"
+        >
+          <HiOutlineArrowLeft className="h-4 w-4" />
+          Back to dashboard
+        </Link>
+      </div>
     );
   }
 
