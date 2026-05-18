@@ -13,9 +13,9 @@ import {
 } from '../utils/passwordValidation';
 
 export default function ForgotPassword() {
-  const { sendPasswordReset } = useAuth();
+  const { sendPasswordReset, user, isAuthenticated, logout } = useAuth();
 
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(user?.email ?? '');
   const [errors, setErrors] = useState({});
   const [formError, setFormError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -89,6 +89,23 @@ export default function ForgotPassword() {
         </Link>
       }
     >
+      {isAuthenticated && (
+        <div className="mb-5 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+          <p>
+            You are signed in as <strong>{user?.email}</strong>. You can request a reset
+            for this or another email, or{' '}
+            <button
+              type="button"
+              className="font-medium text-primary-600 hover:text-primary-700"
+              onClick={() => logout()}
+            >
+              sign out
+            </button>{' '}
+            first.
+          </p>
+        </div>
+      )}
+
       <form onSubmit={handleSubmit} className="space-y-5" noValidate>
         {formError && (
           <div

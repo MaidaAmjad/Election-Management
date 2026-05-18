@@ -5,7 +5,6 @@ import DashboardLayout from '../layouts/DashboardLayout';
 import ProtectedRoute from '../components/routing/ProtectedRoute';
 import MfaProtectedRoute from '../components/routing/MfaProtectedRoute';
 import RoleProtectedRoute from '../components/routing/RoleProtectedRoute';
-import GuestRoute from '../components/routing/GuestRoute';
 import AuthFormRoute from '../components/routing/AuthFormRoute';
 import RoleRequiredRoute from '../components/routing/RoleRequiredRoute';
 import SignupAllowedRoute from '../components/routing/SignupAllowedRoute';
@@ -122,9 +121,9 @@ export default function AppRoutes() {
           <Route
             path={ROUTES.FORGOT_PASSWORD}
             element={
-              <GuestRoute>
+              <AuthFormRoute>
                 <ForgotPassword />
-              </GuestRoute>
+              </AuthFormRoute>
             }
           />
           <Route path={ROUTES.RESET_PASSWORD} element={<ResetPassword />} />
