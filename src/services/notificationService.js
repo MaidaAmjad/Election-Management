@@ -295,7 +295,7 @@ async function sendSecretIdsOnRegistrationFallback({ electionId, secretRowIds })
   if (sent === 0 && failed > 0) {
     throw new Error(
       errors[0] ??
-        'Could not send Secret ID email. Redeploy the send-email Edge Function (see supabase/DEPLOY_SEND_EMAIL.md) and check RESEND_API_KEY.',
+        'Could not send Secret ID email. Redeploy the send-email Edge Function (see supabase/DEPLOY_SEND_EMAIL.md) and check BREVO_API_KEY.',
     );
   }
 

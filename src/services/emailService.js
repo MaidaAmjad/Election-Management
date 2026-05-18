@@ -1,8 +1,8 @@
 import { supabase } from '../supabase/supabase';
 
 /**
- * All transactional email goes through the send-email edge function (Resend).
- * Never call Resend from the browser — the API key stays in Supabase secrets.
+ * All transactional email goes through the send-email edge function (Brevo).
+ * Never call Brevo from the browser — the API key stays in Supabase secrets.
  */
 function formatInvokeError(error) {
   const message = error?.message ?? '';

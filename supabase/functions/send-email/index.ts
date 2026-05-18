@@ -170,43 +170,73 @@ async function createInAppNotification(
   if (error) console.error('[create_notification]', error);
 }
 
-async function sendResendEmail({
+function parseSenderAddress(raw: string | undefined): { name: string; email: string } {
+  const defaultName = 'Election Management';
+  const defaultEmail =
+    Deno.env.get('BREVO_SENDER_EMAIL')?.trim() ??
+    'noreply@example.com';
+
+  const value = (raw ?? '').trim();
+  if (!value) {
+    return { name: defaultName, email: defaultEmail };
+  }
+
+  const angled = value.match(/^(.+?)\s*<([^>]+)>$/);
+  if (angled) {
+    return { name: angled[1].trim(), email: angled[2].trim() };
+  }
+
+  if (value.includes('@')) {
+    return { name: defaultName, email: value };
+  }
+
+  return { name: value, email: defaultEmail };
+}
+
+async function sendBrevoEmail({
   to,
   subject,
   html,
+  toName,
 }: {
   to: string;
   subject: string;
   html: string;
+  toName?: string;
 }) {
-  const resendKey = Deno.env.get('RESEND_API_KEY');
-  const fromEmail =
-    Deno.env.get('NOTIFICATION_FROM_EMAIL') ??
-    'Election Management <onboarding@resend.dev>';
-
-  if (!resendKey) {
+  const apiKey = Deno.env.get('BREVO_API_KEY');
+  if (!apiKey) {
     throw new Error(
-      'RESEND_API_KEY is not configured. Set it in Supabase Edge Function secrets.',
+      'BREVO_API_KEY is not configured. Set it in Supabase Edge Function secrets.',
     );
   }
 
-  const res = await fetch('https://api.resend.com/emails', {
+  const sender = parseSenderAddress(Deno.env.get('NOTIFICATION_FROM_EMAIL'));
+
+  const res = await fetch('https://api.brevo.com/v3/smtp/email', {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${resendKey}`,
-      'Content-Type': 'application/json',
+      'api-key': apiKey,
+      accept: 'application/json',
+      'content-type': 'application/json',
     },
     body: JSON.stringify({
-      from: fromEmail,
-      to: [to],
+      sender,
+      to: [{ email: to, name: toName ?? to }],
       subject,
-      html,
+      htmlContent: html,
     }),
   });
 
-  const result = await res.json();
+  const result = await res.json().catch(() => ({}));
   if (!res.ok) {
-    throw new Error(result.message ?? 'Failed to send email via Resend.');
+    const message =
+      (result as { message?: string })?.message ??
+      (typeof (result as { error?: unknown })?.error === 'string'
+        ? (result as { error: string }).error
+        : null) ??
+      `Failed to send email via Brevo (HTTP ${res.status}).`;
+    throw new Error(message);
   }
   return result;
 }
@@ -266,7 +296,7 @@ async function sendWithLog(
   });
 
   try {
-    const result = await sendResendEmail({
+    const result = await sendBrevoEmail({
       to: opts.to,
       subject: opts.subject,
       html: opts.html,
@@ -675,7 +705,7 @@ serve(async (req) => {
       const code = generateNumericOtp(6);
       await storeCode(admin, email, 'mfa', code);
 
-      await sendResendEmail({
+      await sendBrevoEmail({
         to: email,
         subject: 'Your verification code',
         html: `
@@ -720,7 +750,7 @@ serve(async (req) => {
 
         const resetUrl = `${appOrigin()}/reset-password?token=${encodeURIComponent(token)}`;
 
-        await sendResendEmail({
+        await sendBrevoEmail({
           to: email,
           subject: 'Reset your password',
           html: `

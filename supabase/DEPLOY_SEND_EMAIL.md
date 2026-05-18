@@ -8,8 +8,9 @@ Custom secrets only — [Functions → Secrets](https://supabase.com/dashboard/p
 
 | Name | Example value |
 |------|----------------|
-| `RESEND_API_KEY` | `re_...` from Resend |
-| `NOTIFICATION_FROM_EMAIL` | `Election Management <onboarding@resend.dev>` |
+| `BREVO_API_KEY` | API key from [Brevo → SMTP & API](https://app.brevo.com/settings/keys/api) |
+| `NOTIFICATION_FROM_EMAIL` | `Election Management <noreply@your-verified-domain.com>` |
+| `BREVO_SENDER_EMAIL` | Optional fallback if `NOTIFICATION_FROM_EMAIL` has no address |
 | `APP_URL` | `http://localhost:5173` |
 
 Do **not** add names starting with `SUPABASE_`. `SUPABASE_SERVICE_ROLE_KEY` is under **Default secrets** automatically.
