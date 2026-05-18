@@ -312,23 +312,29 @@ begin
     (
       select jsonb_agg(
         jsonb_build_object(
-          'bucket', b.bucket,
-          'vote_count', b.vote_count,
-          'cumulative', sum(b.vote_count) over (order by b.bucket)
+          'bucket', t.bucket,
+          'vote_count', t.vote_count,
+          'cumulative', t.cumulative
         )
-        order by b.bucket
+        order by t.bucket
       )
       from (
         select
-          date_trunc('hour', v.created_at) as bucket,
-          count(*)::integer as vote_count
-        from public.votes v
-        join public.polls p on p.id = v.poll_id
-        where p.election_id = p_election_id
-          and coalesce(p.is_staging, false) = false
-          and (p_poll_id is null or v.poll_id = p_poll_id)
-        group by date_trunc('hour', v.created_at)
-      ) b
+          b.bucket,
+          b.vote_count,
+          sum(b.vote_count) over (order by b.bucket) as cumulative
+        from (
+          select
+            date_trunc('hour', v.created_at) as bucket,
+            count(*)::integer as vote_count
+          from public.votes v
+          join public.polls p on p.id = v.poll_id
+          where p.election_id = p_election_id
+            and coalesce(p.is_staging, false) = false
+            and (p_poll_id is null or v.poll_id = p_poll_id)
+          group by date_trunc('hour', v.created_at)
+        ) b
+      ) t
     ),
     '[]'::jsonb
   );
